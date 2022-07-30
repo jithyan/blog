@@ -1,4 +1,4 @@
-import { CMS_NAME } from "../lib/constants";
+import { CMS_NAME } from "../../lib/constants";
 
 const Intro = () => {
   return (
@@ -7,7 +7,8 @@ const Intro = () => {
         A Dev Blog
       </h1>
       <h2 className="text-center md:text-left text-lg mt-5 md:pl-8">
-        A collection of thoughts on full stack web development by{" "}
+        A place to consolidate my thoughts on building full stack web apps in
+        React and Typescript. By{" "}
         <a
           href="https://www.linkedin.com/in/jithyan/"
           className="underline hover:text-blue-600 duration-200 transition-colors"
