@@ -10,11 +10,11 @@ const Intro = () => {
         A place to consolidate my thoughts on building web apps in React and
         Typescript.
       </h2>
-      <h3 className="text-white">
+      <h3 className="text-gray-300">
         By{" "}
         <a
           href="https://www.linkedin.com/in/jithyan/"
-          className="underline hover:text-blue-600 duration-200 transition-colors"
+          className="text-teal-500 underline hover:text-sky-400 duration-200 transition-colors"
         >
           Jithya Nanayakkara
         </a>

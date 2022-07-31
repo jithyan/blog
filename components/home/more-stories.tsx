@@ -7,13 +7,7 @@ type Props = {
 
 const MoreStories = ({ posts }: Props) => {
   return (
-    <section
-      className="max-w-2xl"
-      style={{
-        marginLeft: "auto",
-        marginRight: "auto",
-      }}
-    >
+    <section className="max-w-2xl mx-auto">
       {posts.map((post) => (
         <PostPreview
           key={post.slug}
