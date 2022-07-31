@@ -2,25 +2,23 @@ import Container from "./container";
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-800 border-t border-neutral-200">
-      <Container>
-        <div className="flex flex-col lg:flex-row items-center">
-          <div className="flex flex-col lg:flex-row justify-center items-center lg:pl-4 lg:w-1/2">
-            <a
-              href="https://github.com/jithyan"
-              className="mx-3 bg-black hover:bg-white hover:text-black border border-black text-white font-bold py-3 px-12 lg:px-8 duration-200 transition-colors mb-6 lg:mb-0"
-            >
-              Github
+    <footer className="bg-slate-800">
+      <div
+        style={{ display: "table", marginLeft: "auto", marginRight: "auto" }}
+      >
+        <ul className="list-none flex flex-row text-lg text-teal-500 underline font-semibold p-2">
+          <li className="mr-4 max-w-md">
+            <a href="https://github.com/jithyan" className="">
+              github
             </a>
-            <a
-              href="https://www.linkedin.com/in/jithyan/"
-              className="bg-black hover:bg-white hover:text-black border border-black text-white  py-3 px-6 font-bold hover:underline"
-            >
-              LinkedIn
+          </li>
+          <li className="">
+            <a href="https://www.linkedin.com/in/jithyan/" className="">
+              linkedin
             </a>
-          </div>
-        </div>
-      </Container>
+          </li>
+        </ul>
+      </div>
     </footer>
   );
 };
