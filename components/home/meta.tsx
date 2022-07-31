@@ -4,6 +4,16 @@ import { CMS_NAME, HOME_OG_IMAGE_URL } from "../../lib/constants";
 const Meta = () => {
   return (
     <Head>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossOrigin="true"
+      />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter"
+        rel="stylesheet"
+      />
       <link
         rel="apple-touch-icon"
         sizes="180x180"

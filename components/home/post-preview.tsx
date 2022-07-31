@@ -23,15 +23,15 @@ const PostPreview = ({
 }: Props) => {
   return (
     <article className="mb-8">
-      <h3 className="text-2xl mb-3 leading-snug">
+      <h4 className="text-pink-500 font-bold text-2xl mb-1 leading-snug">
         <Link as={`/posts/${slug}`} href="/posts/[slug]">
           <a className="hover:underline">{title}</a>
         </Link>
-      </h3>
-      <div className="text-lg mb-4">
+      </h4>
+      <h5 className="text-white text-md mb-4">
         <DateFormatter dateString={date} />
-      </div>
-      <p className="text-lg leading-relaxed mb-4">{excerpt}</p>
+      </h5>
+      <p className="text-gray-300 text-lg leading-relaxed mb-4">{excerpt}</p>
     </article>
   );
 };
