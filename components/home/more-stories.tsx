@@ -7,20 +7,21 @@ type Props = {
 
 const MoreStories = ({ posts }: Props) => {
   return (
-    <section>
-      <div className="flex-col">
-        {posts.map((post) => (
-          <PostPreview
-            key={post.slug}
-            title={post.title}
-            coverImage={post.coverImage}
-            date={post.date}
-            author={post.author}
-            slug={post.slug}
-            excerpt={post.excerpt}
-          />
-        ))}
-      </div>
+    <section
+      className="max-w-3xl"
+      style={{ marginLeft: "auto", marginRight: "auto" }}
+    >
+      {posts.map((post) => (
+        <PostPreview
+          key={post.slug}
+          title={post.title}
+          coverImage={post.coverImage}
+          date={post.date}
+          author={post.author}
+          slug={post.slug}
+          excerpt={post.excerpt}
+        />
+      ))}
     </section>
   );
 };
