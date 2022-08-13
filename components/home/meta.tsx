@@ -11,10 +11,6 @@ const Meta = () => {
         crossOrigin="true"
       />
       <link
-        href="https://fonts.googleapis.com/css2?family=Inter"
-        rel="stylesheet"
-      />
-      <link
         rel="apple-touch-icon"
         sizes="180x180"
         href="/favicon/apple-touch-icon.png"

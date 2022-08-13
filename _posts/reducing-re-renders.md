@@ -30,6 +30,8 @@ With that out of the way, time for some terminology:
 - A **render** is when the React Component (i.e. the function) is executed.
 - A **commit** is when React actually updates a DOM element.
 
+![Initial](/assets/blog/reducing-re-renders/1-initial.png)
+
 **PICTURE OF REACT ELEMENT OBJECT**
 
 Note the difference between `render` and `commit`. Many developers confuse the two - but they are not one to one. When a component "renders", it does not necessarily mean the DOM is going to be updated - React may have figured out that nothing has changed after a state update, and skip updating portions of the DOM. To really drive home this point, **React components can render many, many times**. These are just basic functions being executed after all - and in most cases, they execute fast with minimal impact to performance.
@@ -85,6 +87,17 @@ a page as a bunch of nested function calls!
 
 (picture of what babel transpiles JSX to)
 
+```javascript
+const profile = React.createElement(
+  "div",
+  null,
+  React.createElement("img", { src: "avatar.png", className: "profile" }),
+  React.createElement("h3", null, [user.firstName, user.lastName].join(" "))
+);
+```
+
+https://babeljs.io/docs/en/babel-plugin-transform-react-jsx
+
 So with each re-render of MyComponent, the following will happen:
 
 1. `incrementer` will be assigned to a new callback object. Remember functions are objects too!
@@ -95,6 +108,125 @@ Now let's discuss performance. Given what we know above (points 1 to 3), will al
 Since it's easy to shoot yourself in the foot and use these incorrectly, premature optimization should be avoided.
 
 However that's the point of this blog post. To dispel the uncertainty of when to use these functions, and importantly, to introduce you to alternative ways of reducing unecessary re-renders. But before that, let's first understand how the memo functions work. We'll ignore the consideration of whether a performance optimization is necessary or not, and just apply it to our example code.
+
+But before that, we need to work through a much more meaty example. This example is incredibly silly, but it's structured in a way so that we can systematically walkthrough
+how it could be optimized. So please bare with me.
+
+Our app displays a list of random numbers to the user.
+The user can increment how long the list of random numbers are.
+Each random number is styled either with black or white background. How this is decided is by generating _another_ random number.
+We also give the user a button to click, which increments a counter.
+
+So our parent component, `App`, looks like this:
+
+```javascript
+function App() {
+  // Our initial random number list is 10
+  const [length, setLength] = useState(10);
+
+  return (
+    <div className="App">
+      <h1>List length is {length}</h1>
+      <MyRandomNumberListAndCounterComponent length={length} />
+      <div>
+        {/*The user can increase the length of the list through this button */}
+        <button onClick={() => setLength((prev) => prev + 1)}>
+          Increase list length
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+And the app looks like this:
+
+(initial-picture)
+
+The rest of the components:
+
+```javascript
+function MyRandomNumberListAndCounterComponent({ length }) {
+  const [counter, setCounter] = useState(0);
+
+  // We store randomNumbers in useState so that it does not change every render
+  const [randomNumbers, setRandomNumbers] = useState(
+    generateListOfRandomNumbers(length)
+  );
+
+  // We need to generate a new list of random numbers every time the lenght prop changes
+  useEffect(() => {
+    setRandomNumbers(generateListOfRandomNumbers(length));
+  }, [length]);
+
+  const incrementer = () => {
+    setCounter((prev) => prev + 1);
+  };
+  // An object that is the prop to SpecialButton
+  const someObj = {
+    name: "Special counter incrementer",
+    onClick: incrementer,
+  };
+
+  return (
+    <div>
+      <hgroup style={{ marginBottom: "8px" }}>
+        <h2>My Special Counter</h2>
+        <h3>Clicked {counter} times.</h3>
+      </hgroup>
+      <FancyNumberListFormatter numberList={randomNumbers} />
+      <SpecialButton config={someObj} />
+    </div>
+  );
+}
+
+function RandomStyledNumber({ number }) {
+  // Generate a random number to decide if this will
+  // be styled differently - based on if it's even or odd
+  const [isEven] = useState(getExpensiveRandomNumber() % 2 === 0);
+
+  // I've left out styling to simplify the code
+  const evenStyle = {};
+  const oddStyle = {};
+
+  return <span style={isEven ? evenStyle : oddStyle}>{number}</span>;
+}
+
+function FancyNumberListFormatter({ numberList }) {
+  return (
+    <div>
+      {numberList.map((number, i) => (
+        <RandomStyledNumber number={number} key={`${number}-${i}`} />
+      ))}
+    </div>
+  );
+}
+
+function SpecialButton({ config }) {
+  return (
+    <div>
+      <button onClick={config.onClick}>{config.name}</button>
+    </div>
+  );
+}
+```
+
+The functions to generate the random numbers use browser `crypto` library.
+I've written it in a way so that it's **really** slow.
+
+```typescript
+function getExpensiveRandomNumber(): number {
+  return new Array(1000)
+    .fill(null)
+    .map(
+      () => Array.from(window.crypto.getRandomValues(new Uint16Array(1000)))[0]
+    )[0];
+}
+
+function generateListOfRandomNumbers(length: number): number[] {
+  return new Array(length).fill(null).map(() => getExpensiveRandomNumber());
+}
+```
 
 First, I'm going to modify the example to do a bit of work. It's become a bit more silly - it now will display a list of random numbers.
 How long this list is, depends on the number passed into the "length" prop.
