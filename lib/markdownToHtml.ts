@@ -1,7 +1,8 @@
-import { remark } from 'remark'
-import html from 'remark-html'
+// import { remark } from 'remark'
+import html from "remark-html";
+import matter from "gray-matter";
 
-export default async function markdownToHtml(markdown: string) {
-  const result = await remark().use(html).process(markdown)
-  return result.toString()
+export default function markdownToHtml(markdown: string) {
+  const result = matter(markdown);
+  return result.content;
 }

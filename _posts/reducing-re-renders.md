@@ -23,16 +23,16 @@ basics of how React works - apologies to those who are already familiar with thi
 
 React provides us with a component based abstraction for easily updating the DOM in response to state changes. This is done by representing the DOM with a **Virtual DOM** (V-DOM), that is nothing more than a lightweight representation of the actual DOM. What does that actually mean? It's just a collection of simple Javascript objects arranged like a tree to represent the actual DOM. The idea behind the V-DOM is that since updates to the actual DOM are expensive operations, we could instead make frequent updates to the V-DOM instead - and then figure out which of the actual DOM elements need to be updated by performing a diff between the old and new state of the V-DOM. The algorithm used to diff the trees is not accurate - it's a delicate balance of being fast but accurate enough to minimize unecessary DOM updates for most cases.
 
+If you were to console log the output of a simple React component, you would get the following object:
+
+![Initial](/assets/blog/reducing-re-renders/react-elements-object.png)
+
 With that out of the way, time for some terminology:
 
 - A React **Element** is a simple Javascript object that represents a node in the V-DOM.
 - A React **Component** is a function that accepts some _props_ and returns React Elements.
 - A **render** is when the React Component (i.e. the function) is executed.
 - A **commit** is when React actually updates a DOM element.
-
-![Initial](/assets/blog/reducing-re-renders/1-initial.png)
-
-**PICTURE OF REACT ELEMENT OBJECT**
 
 Note the difference between `render` and `commit`. Many developers confuse the two - but they are not one to one. When a component "renders", it does not necessarily mean the DOM is going to be updated - React may have figured out that nothing has changed after a state update, and skip updating portions of the DOM. To really drive home this point, **React components can render many, many times**. These are just basic functions being executed after all - and in most cases, they execute fast with minimal impact to performance.
 
@@ -50,7 +50,7 @@ Below is an extremely contrived example of a React component.
 The main idea behind it is that we need to pass an object as a prop to a child component.
 And this object includes a callback.
 
-```javascript
+```jsx
 function MyComponent() {
   const [counter, setCounter] = useState(0);
 
@@ -85,9 +85,9 @@ These child elements, written as JSX, are nothing more than functions too - they
 The reason why we use JSX is that it provides a nice familiar declarative abstraction like html to call components - just imagine writing
 a page as a bunch of nested function calls!
 
-(picture of what babel transpiles JSX to)
+Below is an example of what React code (pre-17) would transform to (taken from [here](https://babeljs.io/docs/en/babel-plugin-transform-react-jsx)):
 
-```javascript
+```jsx
 const profile = React.createElement(
   "div",
   null,
@@ -95,8 +95,6 @@ const profile = React.createElement(
   React.createElement("h3", null, [user.firstName, user.lastName].join(" "))
 );
 ```
-
-https://babeljs.io/docs/en/babel-plugin-transform-react-jsx
 
 So with each re-render of MyComponent, the following will happen:
 
@@ -119,7 +117,7 @@ We also give the user a button to click, which increments a counter.
 
 So our parent component, `App`, looks like this:
 
-```javascript
+```jsx
 function App() {
   // Our initial random number list is 10
   const [length, setLength] = useState(10);
@@ -141,11 +139,11 @@ function App() {
 
 And the app looks like this:
 
-(initial-picture)
+![Initial](/assets/blog/reducing-re-renders/1-initial.png)
 
 The rest of the components:
 
-```javascript
+```jsx
 function MyRandomNumberListAndCounterComponent({ length }) {
   const [counter, setCounter] = useState(0);
 
@@ -237,7 +235,7 @@ generate random numbers, but the reason I'm using it is because it's more comput
 If this was a single component rendering a few times, it wouldn't be a big deal - but if we had 20 of these components rendering
 many times, this would be quite slow.
 
-```javascript
+```jsx
 // We use the browser crypto library to generate random numbers
 function listOfRandomNumbers(length) {
   Array.from(window.crypto.getRandomValues(new Uint8Array(length)));
@@ -282,7 +280,7 @@ the value - and it would only be invoked at the initial render of the component.
 
 Currently, every time we render the component, we're generating and throwing away the random number list.
 
-```javascript
+```jsx
 const [randomNumbers, setRandomNumbers] = useState(() =>
   listOfRandomNumbers(length)
 );
@@ -294,7 +292,7 @@ list every time it changes.
 
 Instead, we could just:
 
-```javascript
+```jsx
 function MyRandomNumberListAndCounterComponent({ length = 1 }) {
   const [counter, setCounter] = useState(0);
 
@@ -354,7 +352,7 @@ And that's where `memo` comes in. We just memoize a function component so that i
 
 To use it, we just need to wrap the React component with memo:
 
-```javascript
+```jsx
 import { memo } from "react";
 
 const MySpecialCounterComponentMemoized = memo(MySpecialCounterComponent);
@@ -397,7 +395,7 @@ are not equal ({} === {} will return false). And in our example, we're creating 
 
 We can easily fix this by using `useMemo`, to cache the object:
 
-```javascript
+```jsx
 /**
  * We only create a new object when the `counter` variable changes.
  * */
@@ -425,7 +423,7 @@ But... notice the awkward syntax for the incrementer. Since `useMemo` accepts a 
 we need to pass in a function that returns a function.
 Instead, we can use `useCallback` instead of `useMemo` - it's explicit purpose is to cache callbacks (aka functions):
 
-```javascript
+```jsx
 const incrementer = useCallback(() => {
   setCounter((prev) => prev + 1);
 }, []);
@@ -433,7 +431,7 @@ const incrementer = useCallback(() => {
 
 Finally, let's memoize the `MyRandomNumberListAndCounterComponent`:
 
-```javascript
+```jsx
 export default memo(MyRandomNumberListAndCounterComponent);
 ```
 
@@ -444,7 +442,7 @@ Now, it will only re-render when its `length` prop changes.
 Memoizing objects to maintain stable reference is what you can do to avoid the classic problem new devs run into with `useEffect` - to choose
 between an infinite `useEffect` cycle or silencing the Eslint exhaustive deps rule
 
-```javascript
+```jsx
 function SimpleComponent() {
   const [counter, setCounter] = useState(0);
   const [numAnalyticsSent, setNumAnalyticsSent] = useState(0);
@@ -474,7 +472,7 @@ Again, this is a pretty silly component. But the gist of the problem is:
 
 To fix the issue, just memoize with `useCallback`:
 
-```javascript
+```jsx
 const sendAnalytics = useCallback(
   () => axios.post("/analytics", { counterBtn: "used" }),
   []
@@ -494,7 +492,7 @@ But let's see how we could re-write our memoized component in a way to mimize ca
 
 First up, let's get rid of `useCallback` for our incrementer function:
 
-```javascript
+```jsx
 import { memo } from "react";
 
 const MySpecialCounterComponentMemoized = memo(MySpecialCounterComponent);
@@ -543,7 +541,7 @@ hooks like `useState` or `useReducer`.
 
 Not everything needs to go into `useState`, or needs to be defined in a component. Too often, I find code like this:
 
-```javascript
+```jsx
 function Component() {
   const doABunchOfStuff = () => {
     const a = 1 + 1;
@@ -558,7 +556,7 @@ The key point of the above code is that the callback isn't _referencing_ any dat
 It does not need to tie itself to React's rendering.
 We can throw away concerns of stable references and garbage collection by just defining `doABunchOfStuff` outside of the component:
 
-```javascript
+```jsx
 const doABunchOfStuff = () => {
   const a = 1 + 1;
   console.log("result", a);
@@ -573,7 +571,7 @@ This can be done for not only callbacks but other data that has **no concern** w
 
 ### Pushing State Down
 
-```javascript
+```jsx
 const FancyNumberListFormatterMemoized = memo(FancyNumberListFormatter);
 
 function ComponentA({ children }) {
