@@ -16,3 +16,27 @@
 .markdown h3 {
   @apply text-2xl mt-8 mb-4 leading-snug;
 }
+
+.markdown a {
+  @apply underline hover:text-sky-400;
+}
+
+.markdown ol {
+  @apply px-16;
+}
+
+.markdown ol li {
+  @apply list-decimal;
+}
+
+.markdown ul {
+  @apply px-16;
+}
+
+.markdown ul li {
+  @apply list-disc;
+}
+
+.markdown blockquote {
+  @apply m-4 px-8 italic bg-slate-800;
+}

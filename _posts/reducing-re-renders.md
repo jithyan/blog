@@ -4,54 +4,61 @@ excerpt: "A discussion of how memo, useMemo, useCallback and pushing state down 
 date: "2022-07-31T20:00:00.000Z"
 author:
   name: Jithya Nanayakkara
-  picture: "/assets/blog/authors/jj.jpeg"
-ogImage:
-  url: ""
 ---
 
-In my experience, React's memoization functions have been source of confusion for many developers.
-Some (such as my younger self), use it everywhere as a "performance optimization" and others, having read
-articles such as this (link to KCDodd's article), say they're unnecessary except for very rare circumstances. That's not even mentioning those who have no idea what purpose those functions serve.
+In my experience, React's memoization functions have been a source of confusion for many developers.
+Some (such as my younger self), use it everywhere as a "performance optimization" and others say they're unnecessary except for very rare circumstances. That's not even mentioning those who have no idea what purpose those functions serve.
 
-At its core, these are incredibly useful features that could be used for two purposes: reducing re-renders of a react component or some expensive computations (re-word this),
-and providing a stable reference for objects. To really understand in which circumstances we make use of them, I need to cover the
-basics of how React works - apologies to those who are already familiar with this, but it's useful that everyone is on the same page with the terminology used here.
+[Memoization](https://en.wikipedia.org/wiki/Memoization) is a technique where the result of an expensive computation is cached to improve performance on subsequent calls to it. It's a tradeoff that consumes more memory to save on execution time.
+
+React's memoization functions are primarily used to:
+
+1. Avoid needless re-renders of a component or re-execution of expensive logic.
+2. Provide a stable reference for objects.
+
+A lot of focus has been on point number 1 - where some devs [overuse those functions](https://royi-codes.vercel.app/thousand-usecallbacks/) in the name of "performance". But point number 2 is an important use case for React's functional components, especially when writing libraries, and is often overlooked. The point of this blog post is to explore when we can use (and not abuse) these features and also cover some other techniques for maintaining referential stability that don't involve using memo.
+
+To really understand in which circumstances we make use of them, I need to cover the basics of how React works - apologies to those who are already familiar with this, but it's useful that everyone is on the same page with the terminology used here.
 
 ## React - What is it
 
 > For simplicity, I'm going to pretend React classes don't exist.
 
-React provides us with a component based abstraction for easily updating the DOM in response to state changes. This is done by representing the DOM with a **Virtual DOM** (V-DOM), that is nothing more than a lightweight representation of the actual DOM. What does that actually mean? It's just a collection of simple Javascript objects arranged like a tree to represent the actual DOM. The idea behind the V-DOM is that since updates to the actual DOM are expensive operations, we could instead make frequent updates to the V-DOM instead - and then figure out which of the actual DOM elements need to be updated by performing a diff between the old and new state of the V-DOM. The algorithm used to diff the trees is not accurate - it's a delicate balance of being fast but accurate enough to minimize unecessary DOM updates for most cases.
+React provides us with a component based abstraction for easily updating the DOM in response to state changes. This is done by representing the DOM with a **Virtual DOM** (V-DOM), that is nothing more than a lightweight representation of the actual DOM. In other words, it is just a collection of simple Javascript objects used to represent the actual DOM.
 
-If you were to console log the output of a simple React component, you would get the following object:
-
-![Initial](/assets/blog/reducing-re-renders/react-elements-object.png)
+The idea behind this is that since updates to the actual DOM are expensive operations, we could instead make frequent updates to the V-DOM, and then figure out which of the actual DOM elements need to be updated by diffing the old and new state of the V-DOM. This process is called [reconcilliation](https://reactjs.org/docs/reconciliation.html) and is fast but does not aim to be very accurate - just good enough to minimize unecessary DOM updates for most practical use cases.
 
 With that out of the way, time for some terminology:
 
 - A React **Element** is a simple Javascript object that represents a node in the V-DOM.
 - A React **Component** is a function that accepts some _props_ and returns React Elements.
+
+This is what a React element looks like, and you can get this by just console logging the output of a component:
+
+![Initial](/assets/blog/reducing-re-renders/react-elements-object.png)
+
 - A **render** is when the React Component (i.e. the function) is executed.
 - A **commit** is when React actually updates a DOM element.
 
-Note the difference between `render` and `commit`. Many developers confuse the two - but they are not one to one. When a component "renders", it does not necessarily mean the DOM is going to be updated - React may have figured out that nothing has changed after a state update, and skip updating portions of the DOM. To really drive home this point, **React components can render many, many times**. These are just basic functions being executed after all - and in most cases, they execute fast with minimal impact to performance.
+Note the difference between `render` and `commit`. Many developers confuse the two - but they are not equal. When a component "renders", it does not necessarily mean the DOM is going to be updated - React may have figured out that nothing has changed after a state update, and skip updating portions of the DOM.
+
+To really drive home this point, **React components can render many, many times**. These are just basic functions being executed after all - and in most cases, they execute fast with minimal impact on performance. It's objects like the one pictured above that get updated every render - based on how they change, React will decide which DOM elements to update.
 
 ## What causes a component to render
 
-This list is not exhaustive, but is to show the many reasons a component could re-render:
+This list is not exhaustive, but is to show some of the reasons a component could re-render:
 
+1. The component's parent has re-rendered.
 2. The component's state changed (i.e. `setState` was called).
 3. The component is a subscriber to a React Context - every time the Context value changes, the component will re-render.
-4. The component's parent has re-rendered. The props passed to the component have changed.
 
 ## How React's function components work
 
-Below is an extremely contrived example of a React component.
-The main idea behind it is that we need to pass an object as a prop to a child component.
+Below is a simple example of a React component. The main idea behind it is that we need to pass an object as a prop to a child component.
 And this object includes a callback.
 
 ```jsx
-function MyComponent() {
+function CounterComponent() {
   const [counter, setCounter] = useState(0);
 
   // A callback to increment the counter
@@ -59,8 +66,8 @@ function MyComponent() {
     setCounter((prev) => prev + 1);
   };
 
-  // An object that is the prop to MySpecialCounterComponent
-  const someObj = {
+  // An object that is the prop to CounterButtonComponent
+  const buttonConfig = {
     name: "hello",
     counter,
   };
@@ -68,8 +75,7 @@ function MyComponent() {
   return (
     <div>
       <h3>My Special Counter</h3>
-      <AnotherComponent seed={start} />
-      <MySpecialCounterComponent config={someObj} />
+      <CounterButtonComponent config={buttonConfig} />
     </div>
   );
 }
@@ -77,17 +83,17 @@ function MyComponent() {
 
 So let's first identify, what would trigger this component to re-render:
 
-1. The component's parent is re-rendered. Its props change.
-2. `setCounter` is called via the `incrementer` callback (and it's called with a different value).
+1. The parent of `CounterComponent` is re-rendered.
+2. `setCounter` is called via the `incrementer` callback (and it's called with a _different_ value).
 
-Every time one of the above triggers are set off, React will execute the MyComponent function again, and return the child elements.
+Every time one of the above triggers are set off, React will execute the `CounterComponent` function again, and return the child elements.
 These child elements, written as JSX, are nothing more than functions too - they are compiled into `React.createElement(args)` function calls.
-The reason why we use JSX is that it provides a nice familiar declarative abstraction like html to call components - just imagine writing
+The reason why we use JSX is that it provides a nice familiar declarative abstraction like HTML to write components - just imagine writing
 a page as a bunch of nested function calls!
 
-Below is an example of what React code (pre-17) would transform to (taken from [here](https://babeljs.io/docs/en/babel-plugin-transform-react-jsx)):
+Below is an example of what React code (pre-v17.0) would transform to (taken from [here](https://babeljs.io/docs/en/babel-plugin-transform-react-jsx)):
 
-```jsx
+```javascript
 const profile = React.createElement(
   "div",
   null,
@@ -96,26 +102,32 @@ const profile = React.createElement(
 );
 ```
 
-So with each re-render of MyComponent, the following will happen:
+So continuing with our example, with each re-render of `CounterComponent`, the following will happen:
 
-1. `incrementer` will be assigned to a new callback object. Remember functions are objects too!
+1. `incrementer` will be assigned to a new object. Remember functions are objects too!
 2. `someObj` will be assigned to a new object. Remember that `{} !== {}`! So both `incrementer` and `someObj` will be assigned to new references in memory.
 3. All the React Elements returned from MyComponent will be recreated.
 
-Now let's discuss performance. Given what we know above (points 1 to 3), will all the re-rendering impact performance by constantly re-allocating memory for variables and running all those functions again? Not really. These operations are quite cheap, and the Javascript runtime is optimized for doing these operations efficiently. But this could be a problem if you have an app with hundreds of components re-rendering frequently. Again, in all the enterprise web apps I've worked on, I've only once run into the problem of having many components re-render a problem . Which is probably why you see a lot of blog posts saying to avoid abusing React's memo functions for optimizing performance - it's because the act of memoization trades off time for space. We cache prior values and return them instead of executing functions again. But there's a small cost with this. And the cost could be significant if we end up not using the cached values much, and end up frequently caching a value, throwing it away because it's stale, and then creating a new one.
-Since it's easy to shoot yourself in the foot and use these incorrectly, premature optimization should be avoided.
+Now let's discuss performance. Given what we know above (points 1 to 3), would repeated renders of `CounterComponent` impact performance by constantly re-allocating memory for variables and running all those functions again? Not really. These operations are quite cheap, and the Javascript runtime is optimized for doing these operations efficiently. But this could be a problem if you have an app with hundreds or thousands of components re-rendering frequently (and of course, it depends on the user's hardware).
 
-However that's the point of this blog post. To dispel the uncertainty of when to use these functions, and importantly, to introduce you to alternative ways of reducing unecessary re-renders. But before that, let's first understand how the memo functions work. We'll ignore the consideration of whether a performance optimization is necessary or not, and just apply it to our example code.
+So do we wrap everything we can with `memo`, `useMemo` and `useCallback`? Some people do, which is probably why you see a lot of blog posts saying to avoid abusing React's memo functions for optimizing performance - it's because the act of memoization trades off time for space. We cache prior values and return them instead of executing functions again. But there's a small cost with this. And the cost could be significant if we end up not using the cached values much, and end up frequently caching a value, throwing it away because it's stale, and then creating a new one.
 
-But before that, we need to work through a much more meaty example. This example is incredibly silly, but it's structured in a way so that we can systematically walkthrough
-how it could be optimized. So please bare with me.
+**Since it's easy to shoot yourself in the foot and use these incorrectly, premature optimization should be avoided.**
 
-Our app displays a list of random numbers to the user.
-The user can increment how long the list of random numbers are.
-Each random number is styled either with black or white background. How this is decided is by generating _another_ random number.
-We also give the user a button to click, which increments a counter.
+However that's the point of this blog post. To dispel the uncertainty of when to use these functions, and importantly, to introduce you to alternative ways of reducing unnecessary re-renders. But before that, let's first understand how the memo functions work. We'll ignore the consideration of whether a performance optimization is necessary or not, and just apply it to our example code.
 
-So our parent component, `App`, looks like this:
+But before that, we need to work through a much more meaty example. This example is incredibly silly and quite long, but we need it to be a few components deep so we could systematically walk through how it could be optimized. So please bare with me.
+
+### A Random Number List Generator and Counter Example
+
+- Our example app displays a list of random numbers to the user.
+- The user can increment how long the list of random numbers are.
+- Each random number is styled either with black or white background. How this is decided is by generating _another_ random number.
+- We also give the user a button to click, which increments a counter.
+
+  ![Initial](/assets/blog/reducing-re-renders/1-initial.png)
+
+Our parent component `App` controls how long the list of random numbers is, and allows the user to increment it:
 
 ```jsx
 function App() {
@@ -136,10 +148,6 @@ function App() {
   );
 }
 ```
-
-And the app looks like this:
-
-![Initial](/assets/blog/reducing-re-renders/1-initial.png)
 
 The rest of the components:
 
@@ -178,6 +186,16 @@ function MyRandomNumberListAndCounterComponent({ length }) {
   );
 }
 
+function FancyNumberListFormatter({ numberList }) {
+  return (
+    <div>
+      {numberList.map((number, i) => (
+        <RandomStyledNumber number={number} key={`${number}-${i}`} />
+      ))}
+    </div>
+  );
+}
+
 function RandomStyledNumber({ number }) {
   // Generate a random number to decide if this will
   // be styled differently - based on if it's even or odd
@@ -190,16 +208,6 @@ function RandomStyledNumber({ number }) {
   return <span style={isEven ? evenStyle : oddStyle}>{number}</span>;
 }
 
-function FancyNumberListFormatter({ numberList }) {
-  return (
-    <div>
-      {numberList.map((number, i) => (
-        <RandomStyledNumber number={number} key={`${number}-${i}`} />
-      ))}
-    </div>
-  );
-}
-
 function SpecialButton({ config }) {
   return (
     <div>
@@ -209,7 +217,7 @@ function SpecialButton({ config }) {
 }
 ```
 
-The functions to generate the random numbers use browser `crypto` library.
+The functions to generate the random numbers use the browser `crypto` library.
 I've written it in a way so that it's **really** slow.
 
 ```typescript
@@ -226,53 +234,24 @@ function generateListOfRandomNumbers(length: number): number[] {
 }
 ```
 
-First, I'm going to modify the example to do a bit of work. It's become a bit more silly - it now will display a list of random numbers.
-How long this list is, depends on the number passed into the "length" prop.
-This list of random numbers will then be passed down to the `FancyNumberListFormatter` component.
+So how does this app perform?
+To answer this question, I'm going to use the React DevTools Profiler to measure how long it takes
+to render all the components.
 
-Note that I'm using the browser crypto library to generate the random numbers. This is a more cryptographically secure way to
-generate random numbers, but the reason I'm using it is because it's more computationally intensive.
-If this was a single component rendering a few times, it wouldn't be a big deal - but if we had 20 of these components rendering
-many times, this would be quite slow.
+I just want the `MyRandomNumberListAndCounterComponent` to re-render, so I can do this by clicking on the
+increment counter button.
 
-```jsx
-// We use the browser crypto library to generate random numbers
-function listOfRandomNumbers(length) {
-  Array.from(window.crypto.getRandomValues(new Uint8Array(length)));
-}
+![First click](/assets/blog/reducing-re-renders/first-click.png)
 
-// Now accept a prop `length` that will be the number of random numbers to generate
-function MyRandomNumberListAndCounterComponent({ length = 1 }) {
-  const [counter, setCounter] = useState(start);
-  const [randomNumbers, setRandomNumbers] = useState(
-    listOfRandomNumbers(length)
-  );
+![First click profile](/assets/blog/reducing-re-renders/2-counter-profiler.png)
 
-  useEffect(() => {
-    setRandomNumbers(listOfRandomNumbers(length));
-  }, [length]);
+A few observations about the profiler:
 
-  // A callback to increment the counter
-  const incrementer = () => {
-    setCounter((prev) => prev + 1);
-  };
+1. We can see the total time it took to render `MyRandomNumberListAndCounterComponent` and all its children was a whopping 1.278 seconds!
+2. `App` did not re-render (we can tell because of its gray color).
+3. Even though only "Clicked 1 times" is what changed, all the child components of `MyRandomNumberListAndCounterComponent` re-rendered.
 
-  // An object that is the prop to MySpecialCounterComponent
-  const someObj = {
-    name: "hello",
-    counter,
-  };
-
-  return (
-    <div>
-      <h3>My Special Counter</h3>
-      {/*We pass our random numbers to the component below */}
-      <FancyNumberListFormatter numberList={randomNumbers} />
-      <MySpecialCounterComponent config={someObj} />
-    </div>
-  );
-}
-```
+## Optimizing the Example
 
 So one way to optimize this code without memoization, is to use `useState`'s **initialization function**.
 Basically if the initial state to `useState` is expensive to compute, pass a callback that generates
@@ -324,7 +303,7 @@ that's passed as the first argument. The second argument is a list of conditions
 
 People who are already aware of this hook may spot a technicality with my implementation. In the React documentation, React does not
 guarantee the hook won't forget its cached value, and can re-execute its first argument even though its dependency array hasn't changed.
-This is not usually a problem, but if the correctness of your code depends on it only executing when the dependency array changes (as is the case in this example, as you'd get a different list of random numbers), then this is not the best approach. BUT, React forgetting the cached value could be a rare situation and this code maybe good enough for most cases. Either way, this illustrates the first use of `useMemo`, which is to avoid unnecessary computations. There's still a cost in memory to store the cached value, and another cost in doing the equality checks on each render to ensure the deps array hasn't changed, but these are tiny compared to the cost of using the crypto lib's random number generator.
+This is not usually a problem, but if the correctness of your code depends on it only executing when the dependency array changes (as is the case in this example, as you'd get a different list of random numbers), then this might not the best approach. BUT, React forgetting the cached value could be a rare situation and this code maybe good enough for most cases. Either way, this illustrates the first use of `useMemo`, which is to avoid unnecessary computations. There's still a cost in memory to store the cached value, and another cost in doing the equality checks on each render to ensure the deps array hasn't changed, but these are tiny compared to the cost of using the crypto lib's random number generator.
 
 Alright so we saved some CPU cycles with `useMemo`. The next optimization we need to tackle is unecessary renders. While a lot less work is being done in each render thanks to `useMemo`, let's minimize the renders to the bare minimum.
 

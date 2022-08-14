@@ -27,7 +27,7 @@ const CodeBlock: CodeComponent = ({
       {...props}
     />
   ) : (
-    <code className={className} {...props}>
+    <code className="bg-slate-800 px-2" {...props}>
       {children}
     </code>
   );
