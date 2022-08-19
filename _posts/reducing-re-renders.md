@@ -121,38 +121,25 @@ But before that, we need to work through a much more meaty example. This example
 ### A Random Number List Generator and Counter Example
 
 - Our example app displays a list of random numbers to the user.
-- The user can increment how long the list of random numbers are.
 - Each random number is styled either with black or white background. How this is decided is by generating _another_ random number.
 - We also give the user a button to click, which increments a counter.
 
   ![Initial](/assets/blog/reducing-re-renders/1-initial.png)
 
-Our parent component `App` controls how long the list of random numbers is, and allows the user to increment it:
+This is the hierarchy of the components:
+
+![Component Hierarchy](/assets/blog/reducing-re-renders/component-hierarchy.png)
+
+And this is the code behind them:
 
 ```jsx
+ReactDOM.render(<App />, rootElement);
+
 function App() {
-  // Our initial random number list is 10
-  const [length, setLength] = useState(10);
-
-  return (
-    <div className="App">
-      <h1>List length is {length}</h1>
-      <MyRandomNumberListAndCounterComponent length={length} />
-      <div>
-        {/*The user can increase the length of the list through this button */}
-        <button onClick={() => setLength((prev) => prev + 1)}>
-          Increase list length
-        </button>
-      </div>
-    </div>
-  );
+  return <RandomNumberListAndCounter length={10} />;
 }
-```
 
-The rest of the components:
-
-```jsx
-function MyRandomNumberListAndCounterComponent({ length }) {
+function RandomNumberListAndCounter({ length }) {
   const [counter, setCounter] = useState(0);
 
   // We store randomNumbers in useState so that it does not change every render
@@ -180,13 +167,13 @@ function MyRandomNumberListAndCounterComponent({ length }) {
         <h2>My Special Counter</h2>
         <h3>Clicked {counter} times.</h3>
       </hgroup>
-      <FancyNumberListFormatter numberList={randomNumbers} />
+      <NumberListFormatter numberList={randomNumbers} />
       <SpecialButton config={someObj} />
     </div>
   );
 }
 
-function FancyNumberListFormatter({ numberList }) {
+function NumberListFormatter({ numberList }) {
   return (
     <div>
       {numberList.map((number, i) => (
@@ -238,7 +225,7 @@ So how does this app perform?
 To answer this question, I'm going to use the React DevTools Profiler to measure how long it takes
 to render all the components.
 
-I just want the `MyRandomNumberListAndCounterComponent` to re-render, so I can do this by clicking on the
+I just want the `RandomNumberListAndCounter` to re-render, so I can do this by clicking on the
 increment counter button.
 
 ![First click](/assets/blog/reducing-re-renders/first-click.png)
@@ -247,23 +234,46 @@ increment counter button.
 
 A few observations about the profiler:
 
-1. We can see the total time it took to render `MyRandomNumberListAndCounterComponent` and all its children was a whopping 1.278 seconds!
+1. We can see the total time it took to render `RandomNumberListAndCounter` and all its children was a whopping 1.278 seconds!
 2. `App` did not re-render (we can tell because of its gray color).
-3. Even though only "Clicked 1 times" is what changed, all the child components of `MyRandomNumberListAndCounterComponent` re-rendered.
+3. Even though only "Clicked 1 times" is what changed, all the child components of `RandomNumberListAndCounter` re-rendered.
 
 ## Optimizing the Example
 
 So one way to optimize this code without memoization, is to use `useState`'s **initialization function**.
-Basically if the initial state to `useState` is expensive to compute, pass a callback that generates
-the value - and it would only be invoked at the initial render of the component.
-
 Currently, every time we render the component, we're generating and throwing away the random number list.
+By passing an initialization function to `useState`, React will only invoke the function once (on the component's first render).
 
-```jsx
-const [randomNumbers, setRandomNumbers] = useState(() =>
-  listOfRandomNumbers(length)
+This is the existing problem code:
+
+```javascript
+// In RandomNumberListAndCounter:
+const [randomNumbers, setRandomNumbers] = useState(
+  generateListOfRandomNumbers(length)
 );
+
+// In RandomStyledNumber:
+const [isEven] = useState(getExpensiveRandomNumber() % 2 === 0);
 ```
+
+And this is the fixed code:
+
+```javascript
+// In RandomNumberListAndCounter:
+const [randomNumbers, setRandomNumbers] = useState(() =>
+  generateListOfRandomNumbers(length)
+);
+
+// In RandomStyledNumber:
+const [isEven] = useState(() => getExpensiveRandomNumber() % 2 === 0);
+```
+
+Let's see how this improves the profiler result:
+
+![Initialize state only once](/assets/blog/reducing-re-renders/init-state-profiler.png)
+
+A dramatic improvement!
+However notice how all the RandomStyled
 
 However, this component could be better written using `useMemo`.
 Our current implementation needs to synchronize with the length prop and generate a new
@@ -272,7 +282,7 @@ list every time it changes.
 Instead, we could just:
 
 ```jsx
-function MyRandomNumberListAndCounterComponent({ length = 1 }) {
+function RandomNumberListAndCounter({ length = 1 }) {
   const [counter, setCounter] = useState(0);
 
   // Only generate a new list of random numbers when length changes
@@ -291,7 +301,7 @@ function MyRandomNumberListAndCounterComponent({ length = 1 }) {
     <div>
       <h3>My Special Counter is at {counter}</h3>
       {/*We pass our random numbers to the component below */}
-      <FancyNumberListFormatter numberList={randomNumbers} />
+      <NumberListFormatter numberList={randomNumbers} />
       <MySpecialCounterComponent config={someObj} />
     </div>
   );
@@ -307,14 +317,14 @@ This is not usually a problem, but if the correctness of your code depends on it
 
 Alright so we saved some CPU cycles with `useMemo`. The next optimization we need to tackle is unecessary renders. While a lot less work is being done in each render thanks to `useMemo`, let's minimize the renders to the bare minimum.
 
-So `MyRandomNumberListAndCounterComponent` will re-render when:
+So `RandomNumberListAndCounter` will re-render when:
 
 1. The `incrementer` is executed (because it triggers a state change).
 2. When its parent component re-renders or length prop changes.
 
 A few observations:
 
-1. `FancyNumberListFormatter` should definitely re-render when the `length` prop changes, because it's going to display a different list of numbers. But does it need to re-render when the `counter` is incremented?
+1. `NumberListFormatter` should definitely re-render when the `length` prop changes, because it's going to display a different list of numbers. But does it need to re-render when the `counter` is incremented?
 2. `MySpecialCounterComponent` should re-render when the counter is incremented. But does it need to re-render when the `length` prop changes, which updates the random number list?
 
 ### Using the profiler
@@ -324,7 +334,7 @@ A few observations:
 
 From our observations, our goal is that:
 
-- `FancyNumberListFormatter` should only re-render when its prop `numberList` changes.
+- `NumberListFormatter` should only re-render when its prop `numberList` changes.
 - `MySpecialCounterComponent` only re-renders when its prop `config` changes.
 
 And that's where `memo` comes in. We just memoize a function component so that it caches the elements it returns, only refreshing it once its props changes.
@@ -335,9 +345,9 @@ To use it, we just need to wrap the React component with memo:
 import { memo } from "react";
 
 const MySpecialCounterComponentMemoized = memo(MySpecialCounterComponent);
-const FancyNumberListFormatterMemoized = memo(FancyNumberListFormatter);
+const NumberListFormatterMemoized = memo(NumberListFormatter);
 
-function MyRandomNumberListAndCounterComponent({ length = 1 }) {
+function RandomNumberListAndCounter({ length = 1 }) {
   const [counter, setCounter] = useState(0);
 
   const randomNumbers = useMemo(() => listOfRandomNumbers(length), [length]);
@@ -356,7 +366,7 @@ function MyRandomNumberListAndCounterComponent({ length = 1 }) {
       <h3>My Special Counter is at {counter}</h3>
       {/*We use memoized components instead */}
       <MySpecialCounterComponentMemoized numberList={randomNumbers} />
-      <FancyNumberListFormatterMemoized config={someObj} />
+      <NumberListFormatterMemoized config={someObj} />
     </div>
   );
 }
@@ -408,10 +418,10 @@ const incrementer = useCallback(() => {
 }, []);
 ```
 
-Finally, let's memoize the `MyRandomNumberListAndCounterComponent`:
+Finally, let's memoize the `RandomNumberListAndCounter`:
 
 ```jsx
-export default memo(MyRandomNumberListAndCounterComponent);
+export default memo(RandomNumberListAndCounter);
 ```
 
 Now, it will only re-render when its `length` prop changes.
@@ -475,9 +485,9 @@ First up, let's get rid of `useCallback` for our incrementer function:
 import { memo } from "react";
 
 const MySpecialCounterComponentMemoized = memo(MySpecialCounterComponent);
-const FancyNumberListFormatterMemoized = memo(FancyNumberListFormatter);
+const NumberListFormatterMemoized = memo(NumberListFormatter);
 
-function MyRandomNumberListAndCounterComponent({ length = 1 }) {
+function RandomNumberListAndCounter({ length = 1 }) {
   const [counter, setCounter] = useState(0);
 
   const randomNumbers = useMemo(() => listOfRandomNumbers(length), [length]);
@@ -502,7 +512,7 @@ function MyRandomNumberListAndCounterComponent({ length = 1 }) {
       <h3>My Special Counter is at {counter}</h3>
       {/*We use memoized components instead */}
       <MySpecialCounterComponentMemoized numberList={randomNumbers} />
-      <FancyNumberListFormatterMemoized config={someObj} />
+      <NumberListFormatterMemoized config={someObj} />
     </div>
   );
 }
@@ -551,7 +561,7 @@ This can be done for not only callbacks but other data that has **no concern** w
 ### Pushing State Down
 
 ```jsx
-const FancyNumberListFormatterMemoized = memo(FancyNumberListFormatter);
+const NumberListFormatterMemoized = memo(NumberListFormatter);
 
 function ComponentA({ children }) {
   const [counter, setCounter] = useState(0);
@@ -576,12 +586,12 @@ function ComponentA({ children }) {
   );
 }
 
-function MyRandomNumberListAndCounterComponent({ length = 1 }) {
+function RandomNumberListAndCounter({ length = 1 }) {
   const randomNumbers = useMemo(() => listOfRandomNumbers(length), [length]);
 
   return (
     <ComponentA>
-      <FancyNumberListFormatterMemoized numberList={randomNumbers} />{" "}
+      <NumberListFormatterMemoized numberList={randomNumbers} />{" "}
     </ComponentA>
   );
 }
