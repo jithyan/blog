@@ -2,10 +2,9 @@
 title: "The Infinite useEffect problem"
 excerpt: "An list of some of my favourite Typescript features."
 date: "2022-08-06T20:00:00.000Z"
+publish: false
 author:
   name: Jithya Nanayakkara
-ogImage:
-  url: ""
 ---
 
 ### The Inifinite useEffect problem

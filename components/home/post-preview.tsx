@@ -6,21 +6,12 @@ import type Author from "../../interfaces/author";
 
 type Props = {
   title: string;
-  coverImage: string;
   date: string;
   excerpt: string;
-  author: Author;
   slug: string;
 };
 
-const PostPreview = ({
-  title,
-  coverImage,
-  date,
-  excerpt,
-  author,
-  slug,
-}: Props) => {
+const PostPreview = ({ title, date, excerpt, slug }: Props) => {
   return (
     <article className="mb-8">
       <h4 className="text-pink-500 font-bold text-2xl mb-1 leading-snug">

@@ -1,8 +1,8 @@
 import PostPreview from "./post-preview";
-import type Post from "../../interfaces/post";
+import type { getStaticProps } from "../../pages";
 
 type Props = {
-  posts: Post[];
+  posts: Awaited<ReturnType<typeof getStaticProps>>["props"]["allPosts"];
 };
 
 const MoreStories = ({ posts }: Props) => {
@@ -12,9 +12,7 @@ const MoreStories = ({ posts }: Props) => {
         <PostPreview
           key={post.slug}
           title={post.title}
-          coverImage={post.coverImage}
           date={post.date}
-          author={post.author}
           slug={post.slug}
           excerpt={post.excerpt}
         />

@@ -2,6 +2,7 @@
 title: "My collection of useful Typescript features and Patterns"
 excerpt: "An list of some of my favourite Typescript features."
 date: "2022-08-06T20:00:00.000Z"
+publish: true
 author:
   name: Jithya Nanayakkara
 ogImage:

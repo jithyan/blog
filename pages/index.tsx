@@ -4,13 +4,10 @@ import Intro from "../components/home/intro";
 import Layout from "../components/layout/layout";
 import { getAllPosts } from "../lib/api";
 import Head from "next/head";
-import Post from "../interfaces/post";
 
-type Props = {
-  allPosts: Post[];
-};
-
-export default function Index({ allPosts }: Props) {
+export default function Index({
+  allPosts,
+}: Awaited<ReturnType<typeof getStaticProps>>["props"]) {
   return (
     <>
       <Layout>
@@ -27,14 +24,7 @@ export default function Index({ allPosts }: Props) {
 }
 
 export const getStaticProps = async () => {
-  const allPosts = getAllPosts([
-    "title",
-    "date",
-    "slug",
-    "author",
-    "coverImage",
-    "excerpt",
-  ]);
+  const allPosts = getAllPosts(["title", "date", "slug", "excerpt"] as const);
 
   return {
     props: { allPosts },
