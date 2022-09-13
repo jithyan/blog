@@ -1,9 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "build": "next build && next export -o build",
+    "cleanup": "rm -rfd build && rm -rfd docs",
+    "build": "yarn cleanup && NODE_ENV=production next build && next export -o build",
     "start": "next dev",
-    "publish": "yarn build && rm -rf docs && cp build/* docs",
+    "publish": "yarn build && mkdir docs && cp -r build/* docs && touch docs/.nojekyll",
     "typecheck": "tsc"
   },
   "dependencies": {
