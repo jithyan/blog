@@ -3,6 +3,7 @@
   "scripts": {
     "build": "next build && next export -o build",
     "start": "next dev",
+    "publish": "yarn build && rm -rf docs && cp build/* docs",
     "typecheck": "tsc"
   },
   "dependencies": {
