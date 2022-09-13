@@ -22,19 +22,19 @@
 }
 
 .markdown ol {
-  @apply px-16;
+  @apply px-8;
 }
 
 .markdown ol li {
-  @apply list-decimal;
+  @apply list-decimal py-1;
 }
 
 .markdown ul {
-  @apply px-16;
+  @apply px-8;
 }
 
 .markdown ul li {
-  @apply list-disc;
+  @apply list-disc py-1;
 }
 
 .markdown blockquote {

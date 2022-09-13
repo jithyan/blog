@@ -22,7 +22,7 @@ Devs tend to focus on the first point - where some [overuse those functions](htt
 
 To really understand in which circumstances we make use of them, I need to cover the basics of how React works - apologies to those who are already familiar with this, but it's useful that everyone is on the same page with the terminology used here.
 
-## React - What is it
+## An overview of React
 
 > For simplicity, I'm going to pretend React classes don't exist.
 
@@ -129,86 +129,111 @@ To do that, we need to work through a much more meaty example. This example is i
 
 ### A Random Number List Generator and Counter Example
 
-- Our example app displays a list of random numbers to the user.
+This is what our example app looks like:
+
+![Picture of example app](/assets/blog/reducing-re-renders/app-first-load.png)
+
+And it does the following:
+
+- Displays a list of random numbers.
 - Each random number is styled either with a black or white background. How this is decided is by generating _another_ random number, and checking if it's even or odd.
 - We also give the user a button to click, which increments a counter.
 
-  ![Initial](/assets/blog/reducing-re-renders/1-initial.png)
-
-This is the hierarchy of the components:
-
-![Component Hierarchy](/assets/blog/reducing-re-renders/component-hierarchy.png)
-
-And this is the code behind them:
+Below is the code for the above app (I've stripped out any CSS, for simplicity):
 
 ```jsx
 ReactDOM.render(<App />, rootElement);
 
+// The Parent component - note that it has no state
+// and passes a fixed prop to RandomNumberListAndCounter
 function App() {
-  return <RandomNumberListAndCounter length={10} />;
-}
-
-function RandomNumberListAndCounter({ length }) {
-  const [counter, setCounter] = useState(0);
-
-  // We store randomNumbers in useState so that it does not change every render
-  const [randomNumbers, setRandomNumbers] = useState(
-    generateListOfRandomNumbers(length)
-  );
-
-  // We need to generate a new list of random numbers every time the lenght prop changes
-  useEffect(() => {
-    setRandomNumbers(generateListOfRandomNumbers(length));
-  }, [length]);
-
-  const incrementer = () => {
-    setCounter((prev) => prev + 1);
-  };
-  // An object that is the prop to SpecialButton
-  const someObj = {
-    name: "Special counter incrementer",
-    onClick: incrementer,
-  };
-
   return (
-    <div>
-      <hgroup style={{ marginBottom: "8px" }}>
-        <h2>My Special Counter</h2>
-        <h3>Clicked {counter} times.</h3>
-      </hgroup>
-      <NumberListFormatter numberList={randomNumbers} />
-      <SpecialButton config={someObj} />
+    <div className="App">
+      <RandomNumberListAndCounter length={10} />
     </div>
   );
 }
 
-function NumberListFormatter({ numberList }) {
+function RandomNumberListAndCounter({ length }) {
+  const [counter, setCounter] = useState(0);
+  // We keep the random number list in state, so that we can control
+  // when the list of random numbers is updated, independent of re-renders of the component.
+  const [randomNumbers, setRandomNumbers] = useState(
+    generateListOfRandomNumbers(length)
+  );
+
+  // Generate a different set of random numbers every time length changes
+  useEffect(() => {
+    setRandomNumbers(generateListOfRandomNumbers(length));
+  }, [length]);
+
+  const incrementOnClick = () => {
+    setCounter((prev) => prev + 1);
+  };
+
+  // An object that is the prop to ButtonWithFooter
+  // A little unusual, but sometimes you may need to pass
+  // complex objects to a component
+  const configProp = {
+    name: "Special counter incrementer",
+    listLength: length,
+  };
+
+  return (
+    <div>
+      {/* Displays the counter */}
+      <FancyHeader counter={counter} />
+      {/* Displays the styled list of random numbers */}
+      <FancyNumberListFormatter numberList={randomNumbers} />
+      {/* Increments the counter, and shows how many random numbers are shown*/}
+      <ButtonWithFooter config={configProp} onClick={incrementOnClick} />
+    </div>
+  );
+}
+
+function FancyHeader({ counter }) {
+  return (
+    <hgroup>
+      <h1>My Special Counter</h1>
+      <h2>Clicked {counter} times.</h2>
+    </hgroup>
+  );
+}
+
+function FancyNumberListFormatter({ numberList }) {
   return (
     <div>
       {numberList.map((number, i) => (
-        <RandomStyledNumber number={number} key={`${number}-${i}`} />
+        <RandomlyStyledNumber number={number} key={`${number}-${i}`} />
       ))}
     </div>
   );
 }
 
-function RandomStyledNumber({ number }) {
-  // Generate a random number to decide if this will
-  // be styled differently - based on if it's even or odd
+function RandomlyStyledNumber({ number }) {
   const [isEven] = useState(getExpensiveRandomNumber() % 2 === 0);
 
-  // I've left out styling to simplify the code
+  // I'm skipping showing any styling
   const evenStyle = {};
   const oddStyle = {};
 
   return <span style={isEven ? evenStyle : oddStyle}>{number}</span>;
 }
 
-function SpecialButton({ config }) {
+function ButtonWithFooter({ config, onClick }) {
   return (
-    <div>
-      <button onClick={config.onClick}>{config.name}</button>
-    </div>
+    <>
+      <div>
+        <button onClick={onClick}>{config.name}</button>
+      </div>
+      {/* 
+        Normally you wouldn't include a footer with a button, but this is only
+        for the purpose of the example 
+      */}
+      <footer>
+        <em>Number of random numbers shown: {config.listLength}</em>
+      </footer>
+    </>
   );
 }
 ```
@@ -219,7 +244,7 @@ I've written it in a way so that it's **really** slow.
 It is **not important** to understand how they work, I'm just including it if you're curious:
 
 ```typescript
-function getExpensiveRandomNumber(): number {
+function getExpensiveRandomNumber() {
   return new Array(1000)
     .fill(null)
     .map(
@@ -227,10 +252,14 @@ function getExpensiveRandomNumber(): number {
     )[0];
 }
 
-function generateListOfRandomNumbers(length: number): number[] {
-  return new Array(length).fill(null).map(() => getExpensiveRandomNumber());
+function generateListOfRandomNumbers(length) {
+  return new Array(length).fill(null).map(getExpensiveRandomNumber);
 }
 ```
+
+This is the hierarchy of the components:
+
+![Component Hierarchy](/assets/blog/reducing-re-renders/component-hierarchy.png)
 
 So how does this app perform?
 To answer this question, I'm going to use the React DevTools Profiler to measure how long it takes to render all the components:
@@ -240,19 +269,20 @@ To answer this question, I'm going to use the React DevTools Profiler to measure
 - Before clicking the counter button, I hit record on the profiler, then after I see the counter increment, I stop recording.
 - If any renders took place, the profile will spit out a flame graph of how long each component took to render.
 
-![First click](/assets/blog/reducing-re-renders/first-click.png)
+![First click](/assets/blog/reducing-re-renders/app-first-click.png)
 
-![First click profile](/assets/blog/reducing-re-renders/2-counter-profiler.png)
+![First click profiler](/assets/blog/reducing-re-renders/app-first-click-profiler.png)
 
 A few observations about the profiler:
 
-1. We can see the total time it took to render `RandomNumberListAndCounter` and all its children was a whopping 1.278 seconds!
+1. We can see the total time it took to render `RandomNumberListAndCounter` and all its children was a whopping **1.25 seconds**!
 2. `App` did not re-render (we can tell because of its gray color).
-3. Even though only the text "Clicked 1 times" is what changed, all the child components of `RandomNumberListAndCounter` re-rendered.
+3. Even though only the text "Clicked 1 times" is what changed, all the child components of `RandomNumberListAndCounter` _re-rendered_.
 
 ## Optimizing the Example
 
 We desperately need to fix the slow re-rendering of the example every time we increment the counter. And we can actually do this without memoization, by using `useState`'s **initialization function**.
+
 Currently, every time we render the component, we're generating and throwing away the random number list.
 By passing an initialization function to `useState`, React will only invoke the function once (on the component's first render).
 
@@ -284,11 +314,13 @@ const [isEven] = useState(() => getExpensiveRandomNumber() % 2 === 0);
 
 Let's see how this improves the profiler result:
 
-![Initialize state only once](/assets/blog/reducing-re-renders/init-state-profiler.png)
+![Initialize state only once](/assets/blog/reducing-re-renders/profiler-init-state.png)
 
-A dramatic improvement!
+0.9ms - A dramatic improvement!
 
-But notice how all the `RandomStyledNumber`, `SpecialButton` and `NumberListFormatter` components continue to re-render. These renders are unnecessary given the only thing that changes is the unrelated counter text.
+> At this point, you'd normally stop optimizing your app (unless you expect it to grow in complexity). A 0.9ms re-render time is plenty fast. However, for the sake of learning, we're going to optimize the rest of the app.
+
+But notice how all the `RandomlyStyledNumber`, `ButtonWithFooter` and `FancyNumberListFormatter` components continue to re-render. These renders are unnecessary given the only thing that changes is the unrelated counter text.
 
 This where `React.memo` comes in. If we pass a component into `React.memo`, it will only re-render it if its props have changed between re-renders of its parent. Parent components can re-render all they like, but as long as the props passed to the memoized component remain the same, the cached React Elements will be what's returned.
 
@@ -305,22 +337,29 @@ So should we wrap all our components in the example with `React.memo`?
 
 No. It's neither necessary nor optimal.
 
-If you look at the component hieararchy diagram, if we wrap `RandomStyledNumber` with `React.memo`, we'd be caching all those components. These components _will only change_ if the `numberList` changes.
+If look at the component hierarchy diagram again, we can see that the memoizing the following components is redundant:
 
-In fact, we would only need to memoize `NumberListFormatter` and `SpecialButton`. `RandomNumberListAndCounter` will never re-render because of its parent (refer to what's in the `App` component to understand why).
+- `App`: This is the root component. It's pointless memoizing this as it has no parent component to trigger any re-renders.
+- `RandomNumberListAndCounter`: In the context of our example, this component will only re-render when its state, `counter`, changes. Its parent component, `App`, doesn't also have any state so it would never re-render. Therefore wrapping it with `React.memo` is redundant, as memoized components will continue to re-render when its internal state changes (which is what we want).
+- `RandomlyStyledNumber`: This component will **only** re-render when its parent, `FancyNumberListFormatter`, re-renders. Therefore, only memoizing its parent is sufficient.
+- `FancyHeader`: This component depends on `counter`, as its passed as a prop. We know that the only thing in our app that triggers a re-render is the `counter` being updated. Therefore, wrapping this in `React.memo` is redundant.
 
-The only thing that causes it to re-render is the `counter` incrementing. If we memoize `RandomNumberListAndCounter`, it would continue to re-render when its state changes - which is what we want in order for it to work correctly.
+So only these 2 components would benefit from memo:
 
-So let's go ahead and memoize `NumberListFormatter` and `SpecialButton` components:
+1. `FancyNumberListFormatter`
+2. `ButtonWithFooter`
+
+Both of the above components depend on the `length` prop, and not `counter`. When `counter` changes, these components end up re-rendering, so they're good candidates for memoization.
+
+Let's go ahead and do just that:
 
 ```javascript
-const NumberListFormatterMemoized = React.memo(NumberListFormatter);
-const SpecialButtonMemoized = React.memo(SpecialButton);
+const FancyNumberListFormatterMemoized = React.memo(FancyNumberListFormatter);
+const ButtonWithFooterMemoized = React.memo(ButtonWithFooter);
 
-function RandomNumberListAndCounter({ length }) {
+function RandomNumberListAndCounter({ length }: { length: number }) {
   const [counter, setCounter] = useState(0);
-
-  const [randomNumbers, setRandomNumbers] = useState(
+  const [randomNumbers, setRandomNumbers] = useState(() =>
     generateListOfRandomNumbers(length)
   );
 
@@ -328,77 +367,100 @@ function RandomNumberListAndCounter({ length }) {
     setRandomNumbers(generateListOfRandomNumbers(length));
   }, [length]);
 
-  const incrementer = () => {
+  const incrementOnClick = () => {
     setCounter((prev) => prev + 1);
   };
 
-  const someObj = {
+  const configProp = {
     name: "Special counter incrementer",
-    onClick: incrementer,
+    listLength: length,
   };
 
   return (
     <div>
-      <hgroup style={{ marginBottom: "8px" }}>
-        <h2>My Special Counter</h2>
-        <h3>Clicked {counter} times.</h3>
-      </hgroup>
-      {/** We use the memoized components instead */}
-      <NumberListFormatterMemoized numberList={randomNumbers} />
-      <SpecialButtonMemoized config={someObj} />
+      <FancyHeader counter={counter} />
+      <FancyNumberListFormatterMemoized numberList={randomNumbers} />
+      <ButtonWithFooterMemoized
+        config={configProp}
+        onClick={incrementOnClick}
+      />
     </div>
   );
 }
 ```
 
+Before we check the profiler, I'm going to throttle my CPU speed by 6x in Chrome - so that it simulates users who don't have a developer grade laptop:
+
+![How to throttle CPU](/assets/blog/reducing-re-renders/throttle-cpu.png)
+
 And now let's take a look at the React profiler, where I measure what happens after I click the counter button:
 
-**Picture of profiler**
+![Flamegraph of memoized components](/assets/blog/reducing-re-renders/memo-flamegraph.png)
 
-The grayed out bars indicate that a component has not re-rendered. As expected, `NumberListFormatter` and child components have not re-rendered. But `SpecialButton` has re-rendered - definitely not what we want, especially since we memoized it!
+Looking good - all components that don't need to re-render aren't rendering according to this flamegraph (indicated by the grayed out bars).
+
+But the flamegraph isn't showing all the re-rendering components, so let's switch views to "Ranking":
+
+![Ranking of memoized components](/assets/blog/reducing-re-renders/memo-ranked.png)
+
+Only two components should re-render: `RandomNumberListFormatter` and `FancyHeader`. `RandomNumberListFormatter` contains the state `counter`, which changes, and `FancyHeader` takes in the prop `counter`.
+
+But it also looks like `ButtonWithFooter` is re-rendering, even though it doesn't care about the `counter` value.
+
+So why would `ButtonWithFooter` re-render despite being memoized and having no props change?
 
 Allow me to yank out the cause of this:
 
 ```javascript
-const someObj = {
-  name: "Special counter incrementer",
-  onClick: incrementer,
+// New object assignment
+const incrementOnClick = () => {
+  setCounter((prev) => prev + 1);
 };
 
-<SpecialButton config={someObj} />;
+// New object assignment
+const configProp = {
+  name: "Special counter incrementer",
+  listLength: length,
+};
+
+// Even though semantically the same, config and incrementOnClick
+// are different objects on each render
+<ButtonWithFooterMemoized config={configProp} onClick={incrementOnClick} />;
 ```
 
-**Why?**
-
-The thing to note is that when React compares the previous props with the new props, it uses [Object.is](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is) to compare
+The thing to note is that when `React.memo` compares the previous props with the new props, it uses [Object.is](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is) to compare
 if they've changed. This is a shallow comparison - so two objects that have the same values but different memory references,
-are not equal (`{} === {}` evaluates to `false`). And in our example, we're creating **new objects** for `incrementer` and `someObj` on _every render_.
+are not equal (remember `{} === {}` evaluates to `false`).
 
-We can easily fix this by using `useMemo`, to cache the object:
+And in our example, we're creating **new objects** for `incrementOnClick` and `configProp` on _every render_.
+
+We can easily fix this by using `useMemo`, to cache the objects:
 
 ```jsx
-/**
- * We only create a new object when the `counter` variable changes.
- * */
-const someObj = useMemo(
-  () => ({
-    name: "hello",
-    counter,
-  }),
-  [counter]
-);
-
-const incrementer = useMemo(
+const incrementOnClick = useMemo(
   () => () => {
     setCounter((prev) => prev + 1);
   },
   []
 );
+
+/**
+ * We only create a new object when the `length` changes.
+ */
+const configProp = useMemo(
+  () => ({
+    name: "Special counter incrementer",
+    listLength: length,
+  }),
+  [length]
+);
 ```
 
-This will fix our react profiler:
+And the new Ranked profiler result is:
 
-**_(picture)_**
+![Profiler after useMemo](/assets/blog/reducing-re-renders/profiler-usememo.png)
+
+Now only the two expected components re-render.
 
 But... notice the awkward syntax for the incrementer. Since `useMemo` accepts a function, and caches the return value of that function,
 we need to pass in a function that returns a function.
@@ -413,64 +475,58 @@ const incrementer = useCallback(() => {
 ## But we can do better
 
 As I said very early in this piece, there's a small cost with memoizing. It _could_ add up if we have tonnes of components being memoized.
-But let's see how we could re-write our memoized component in a way to mimize calls to memo.
+But let's see how we could re-write our memoized component in a way to minimize calls to memo.
 
-First up, let's get rid of `useCallback` for our incrementer function:
+### Using useRef to replace useCallback or useMemo
+
+In our example, we can see we're calling `useCallback` with an empty dependency array:
+
+```javascript
+const [counter, setCounter] = useState(0);
+
+const incrementOnClick = useCallback(() => {
+  setCounter((prev) => prev + 1);
+}, []);
+```
+
+We can do this because `React` guarantees `setCounter` to be stable.
+
+For scenarios where we have an empty dependency array for `useCallback` or `useMemo`, we could just store the variable in a ref instead.
+Note that this only applies for `useMemo` where you're using it for a stable reference, and **not** to reduce expensive computations.
+
+So our example can be re-written as follows:
 
 ```jsx
-function RandomNumberListAndCounter({ length }) {
-  const [counter, setCounter] = useState(0);
+const incrementOnClick = useRef(() => {
+  setCounter((prev) => prev + 1);
+});
 
-  const [randomNumbers, setRandomNumbers] = useState(
-    generateListOfRandomNumbers(length)
-  );
-
-  useEffect(() => {
-    setRandomNumbers(generateListOfRandomNumbers(length));
-  }, [length]);
-
-  // Replace useCallback with useRef
-  const incrementer = useRef(() => {
-    setCounter((prev) => prev + 1);
-  });
-
-  // useRef returns a mutable object with the field "current".
-  // This field is assigned with our incrementer function.
-  const someObj = {
-    name: "Special counter incrementer",
-    onClick: incrementer.current,
-  };
-
-  return (
-    <div>
-      <hgroup style={{ marginBottom: "8px" }}>
-        <h2>My Special Counter</h2>
-        <h3>Clicked {counter} times.</h3>
-      </hgroup>
-      {/** We use the memoized components instead */}
-      <NumberListFormatterMemoized numberList={randomNumbers} />
-      <SpecialButtonMemoized config={someObj} />
-    </div>
-  );
-}
+<ButtonWithFooterMemoized
+  config={configProp}
+  onClick={incrementOnClick.current}
+/>;
 ```
 
 `useRef` returns a reference to a mutable object. Like in `useState`, the initial value you pass is assigned
 only once, no matter how many times the component re-renders. How `useRef` works is beyond the scope of this post, but you can [read more on it here](https://beta.reactjs.org/apis/react/useRef).
-Since `incrementer.current` is a mutable object, it's value will only change if we update it - and we don't need to be about re-renders of the
-component re-assigning it to a different value. So if we want to define a stable object, that does depend on some other stable objects in a component, we can use `useRef` instead. Another way of thinking about this is - is the dependency array of `useMemo` or `useCallback` an empty array? Then it can be replaced with `useRef`.
+
+This technique is common in React libraries where returning stable references from hooks is important.
+
+Since `incrementOnClick.current` is a mutable object, its value will only change if we explicitly update it - so we don't need to care about re-renders of the component re-assigning it to a different value.
 
 The only thing to watch out for, is that since it's a mutating object, React has no idea if it has changed - which is fine.
-Usually we want React to know if a variable has changed when we synchronize with effects or display the data - that's why we use
-hooks like `useState` or `useReducer`.
+Usually we only want React to know if a variable has changed when we synchronize with effects or display the data - that's why we use
+hooks like `useState`.
+
+### Defining variables outside a component
 
 Not everything needs to go into `useState`, or needs to be defined in a component. Too often, I find code like this:
 
 ```jsx
 function Component() {
   const doABunchOfStuff = () => {
-    const a = 1 + 1;
-    console.log("result", a);
+    const result = 1 + 1;
+    console.log("result", result);
   };
   const config = { title: "Beautiful example", theme: "skyblue" };
 
@@ -478,9 +534,11 @@ function Component() {
 }
 ```
 
-The key point of the above code is that the callback isn't _referencing_ any data defined in the component.
+The key point of the above code is that `doABunchOfStuff` and `config` isn't _referencing_ any data defined **in the component**.
+
 It does not need to tie itself to React's rendering.
-We can throw away concerns of stable references and garbage collection by just defining `doABunchOfStuff` outside of the component:
+
+We can throw away concerns of stable references and garbage collection by just defining `doABunchOfStuff` and `config` outside of the component:
 
 ```jsx
 const doABunchOfStuff = () => {
@@ -496,60 +554,103 @@ function Component() {
 
 ### Pushing State Down
 
-There is one more technique I'd like to touch on, and it's one where you can avoid having to
-use memoization. This technique involves restructuring your components, such that components that have to re-render due to
-state changes will do so in a way that other components do not re-render.
+There is one more technique I'd like to dive into, and it's one where you can minimize having to use `React.memo`. This technique involves restructuring your component tree hierarchy, so that state changes are localized to components that display them. Components that are meant to be rendered at the bottom of the tree, are passed down as `children`.
 
-Let me show you by re-writing the example:
+It's best understood by re-writing our example.
+
+First, let's put all the code related to the `counter` in one component, called `FancyCounter`:
 
 ```jsx
-const NumberListFormatterMemoized = memo(NumberListFormatter);
+const ButtonWithFooterMemoized = React.memo(ButtonWithFooter);
 
-function ComponentA({ children }) {
+function FancyCounter({ length, children }) {
   const [counter, setCounter] = useState(0);
 
-  const incrementer = useRef(() => {
+  const incrementOnClick = useRef(() => {
     setCounter((prev) => prev + 1);
   });
-  const someObj = useMemo(
+
+  const configProp = useMemo(
     () => ({
-      name: "hello",
-      counter,
+      name: "Special counter incrementer",
+      listLength: length,
     }),
-    [counter]
+    [length]
   );
 
   return (
     <div>
-      <h3>My Special Counter is at {counter}</h3>
+      <FancyHeader counter={counter} />
       {children}
-      <MySpecialCounterComponent config={someObj} onClick={incrementer} />
+      <ButtonWithFooterMemoized
+        config={configProp}
+        onClick={incrementOnClick.current}
+      />
     </div>
-  );
-}
-
-function RandomNumberListAndCounter({ length = 1 }) {
-  const randomNumbers = useMemo(() => listOfRandomNumbers(length), [length]);
-
-  return (
-    <ComponentA>
-      <NumberListFormatterMemoized numberList={randomNumbers} />{" "}
-    </ComponentA>
   );
 }
 ```
 
-This technique was lifted straight from Dan Abramov himself - I highly recommend reading his blog post here(link).
+This is the key point: now, `FancyCounter` will only re-render when `setCounter` is called - when this happens, its `children` prop
+will be **unchanged**. `children` consists of React Elements passed down from the parent - as the parent has _not re-rendered_, these
+objects remain unchanged - and React is smart enough to know that these do not need to be re-rendered.
+
+This is how the rest of the re-written components look like:
+
+```jsx
+function RandomNumberListAndCounter({ length }: { length: number }) {
+  const [randomNumbers, setRandomNumbers] = useState(() =>
+    generateListOfRandomNumbers(length)
+  );
+
+  useEffect(() => {
+    setRandomNumbers(generateListOfRandomNumbers(length));
+  }, [length]);
+
+  return (
+    <FancyCounter length={length}>
+      <FancyNumberListFormatter numberList={randomNumbers} />
+    </FancyCounter>
+  );
+}
+```
+
+We pass in `FancyNumberListFormatter` as the `children` of `FancyCounter`. `RandomNumberListAndCounter` will only re-render if its parent changes,
+and in our app, this will never happen. So `React.memo` for `FancyNumberListFormatter` is no longer needed!
+
+We can see the React Profiler gives the same results:
+
+![Push state down flamegraph](/assets/blog/reducing-re-renders/pushed-state-flamegraph.png)
+
+![Push state down flamegraph](/assets/blog/reducing-re-renders/pushed-state-ranked.png)
+
+This technique was lifted straight from Dan Abramov himself - and I highly recommend reading [his blog post on it](https://overreacted.io/before-you-memo/).
+
 The basic idea is that the prop `children`, is a reference to some React elements created by the parent.
 If the child component has re-rendered, and the `children` prop remains the same, React knows that `children` doesn't have to be rendered again.
 
 ### Wrap Up
 
-1. Using `React.memo` reduce unecessary renders - only render when props change or state/subscriptions change.
-2. `useMemo` to cache the results of expensive operations.
-3. `useCallback` and `useMemo` for caching object references so that they're stable and only update when necessary.
-4. Defining variables outside of a Component and using `useRef` can be used for stable references in certain circumstances.
-5. Pushing state down to isolate components that need to re-render.
+When we want to create stable references, we can:
 
-There is one more topic I'd like to address - the `key` prop in React.
-However, that's a topic for another (much shorter) blog post.
+1. Define objects and functions outside of a component, if they don't rely on variables defined in the component itself.
+2. If they do depend on variables defined in the component, we can use `useCallback` and `useMemo`.
+3. If they depend on variables defined in the component that are already stable, we can use `useRef` instead.
+
+When we want to prevent redundant expensive computations on re-render, we can:
+
+1. Pass an initialization function to `useState`, if the result of the computation needs to be part of the component state.
+2. Use `useMemo`.
+
+When we want to minimize redundant renders of a component, we can:
+
+1. Use `React.memo` so that a component will only re-render if its props change.
+2. Reorganize the component tree, so that state changes are localized to components who consume that state.
+
+In our final optimized example app, we have:
+
+- One component wrapped with `React.memo`
+- One object wrapped with `useMemo`
+- One callback stored in `useRef`
+
+A more naive approach would have been memoizing every component, object and callback in the app.
