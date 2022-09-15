@@ -9,15 +9,23 @@ type Props = {
   coverImage: string;
   date: string;
   author: Author;
+  estimatedReadingTime: string;
 };
 
-const PostHeader = ({ title, coverImage, date, author }: Props) => {
+const PostHeader = ({
+  title,
+  coverImage,
+  date,
+  author,
+  estimatedReadingTime,
+}: Props) => {
   return (
     <>
       <div className="max-w-2xl mx-auto">
         <PostTitle>{title}</PostTitle>
         <div className="mt-2 mb-6 text-lg text-white font-semibold">
-          <DateFormatter dateString={date} /> | <span>Jithya Nanayakkara</span>
+          <DateFormatter dateString={date} /> | <span>Jithya Nanayakkara</span>{" "}
+          | <span>{estimatedReadingTime}</span>
         </div>
       </div>
     </>

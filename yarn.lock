@@ -2567,6 +2567,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"reading-time-estimator@npm:^1.7.2":
+  version: 1.7.2
+  resolution: "reading-time-estimator@npm:1.7.2"
+  checksum: 62b14a246b25d42e04db34307a88cad862432237adb237ef123d33009c2cb689e6876ef1461d6981499a20d4e995de380e2d45d9b69dcc8c06a4bb58316af42b
+  languageName: node
+  linkType: hard
+
 "refractor@npm:^3.6.0":
   version: 3.6.0
   resolution: "refractor@npm:3.6.0"
@@ -2725,6 +2732,7 @@ __metadata:
     react-dom: ^18.2.0
     react-markdown: ^8.0.3
     react-syntax-highlighter: ^15.5.0
+    reading-time-estimator: ^1.7.2
     remark: ^14.0.2
     remark-gfm: ^3.0.1
     remark-html: ^15.0.1
