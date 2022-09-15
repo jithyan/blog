@@ -17,8 +17,6 @@ This is the final article in a series covering common techniques for optimizing 
 
 ---
 
-## But we can do better
-
 In the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we worked through an example application and used memoization to reduce unnecessary renders. However, as I said in the [very first article](https://jithyan.github.io/blog/posts/understanding-renders) of this series, there's a small cost with memoizing. And those costs _could_ add up significantly if we have tonnes of components being memoized.
 
 So let's see how we could re-write our memoized application in a way to minimize calls to memo.
