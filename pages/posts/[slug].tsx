@@ -9,19 +9,28 @@ import { getPostBySlug, getAllPosts } from "../../lib/api";
 import PostTitle from "../../components/posts/post-title";
 import Head from "next/head";
 import markdownToHtml from "../../lib/markdownToHtml";
+import { readingTime } from "reading-time-estimator";
 import type PostType from "../../interfaces/post";
 
 type Props = {
   post: PostType;
   morePosts: PostType[];
   preview?: boolean;
+  estimatedReadingTime: ReturnType<typeof readingTime>;
 };
 
-export default function Post({ post, morePosts, preview }: Props) {
+export default function Post({
+  post,
+  morePosts,
+  preview,
+  estimatedReadingTime,
+}: Props) {
   const router = useRouter();
+
   if (!router.isFallback && !post?.slug) {
     return <ErrorPage statusCode={404} />;
   }
+
   return (
     <Layout>
       <Container>
@@ -39,6 +48,7 @@ export default function Post({ post, morePosts, preview }: Props) {
                 coverImage={post.coverImage}
                 date={post.date}
                 author={post.author}
+                estimatedReadingTime={estimatedReadingTime.text}
               />
               <PostBody content={post.content} />
             </article>
@@ -65,6 +75,7 @@ export async function getStaticProps({ params }: Params) {
     "coverImage",
   ]);
   const content = markdownToHtml(post.content || "");
+  const estimatedReadingTime = readingTime(content);
 
   return {
     props: {
@@ -72,6 +83,7 @@ export async function getStaticProps({ params }: Params) {
         ...post,
         content,
       },
+      estimatedReadingTime,
     },
   };
 }

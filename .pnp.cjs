@@ -47,6 +47,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["react-dom", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:18.2.0"],\
             ["react-markdown", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:8.0.3"],\
             ["react-syntax-highlighter", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:15.5.0"],\
+            ["reading-time-estimator", "npm:1.7.2"],\
             ["remark", "npm:14.0.2"],\
             ["remark-gfm", "npm:3.0.1"],\
             ["remark-html", "npm:15.0.1"],\
@@ -3047,6 +3048,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["reading-time-estimator", [\
+        ["npm:1.7.2", {\
+          "packageLocation": "./.yarn/cache/reading-time-estimator-npm-1.7.2-3e61881706-62b14a246b.zip/node_modules/reading-time-estimator/",\
+          "packageDependencies": [\
+            ["reading-time-estimator", "npm:1.7.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["refractor", [\
         ["npm:3.6.0", {\
           "packageLocation": "./.yarn/cache/refractor-npm-3.6.0-63276910f9-39b01c4168.zip/node_modules/refractor/",\
@@ -3204,6 +3214,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["react-dom", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:18.2.0"],\
             ["react-markdown", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:8.0.3"],\
             ["react-syntax-highlighter", "virtual:dc3fc578bfa5e06182a4d2be39ede0bc5b74940b1ffe0d70c26892ab140a4699787750fba175dc306292e80b4aa2c8c5f68c2a821e69b2c37e360c0dff36ff66#npm:15.5.0"],\
+            ["reading-time-estimator", "npm:1.7.2"],\
             ["remark", "npm:14.0.2"],\
             ["remark-gfm", "npm:3.0.1"],\
             ["remark-html", "npm:15.0.1"],\
