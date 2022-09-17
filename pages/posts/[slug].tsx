@@ -75,7 +75,7 @@ export async function getStaticProps({ params }: Params) {
     "coverImage",
   ]);
   const content = markdownToHtml(post.content || "");
-  const estimatedReadingTime = readingTime(content);
+  const estimatedReadingTime = readingTime(content, 100);
 
   return {
     props: {

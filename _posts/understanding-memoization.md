@@ -9,7 +9,7 @@ author:
 
 ---
 
-This is the second article in a series covering common techniques for optimizing React's performance by minimizing renders.
+This is the second article in a series covering techniques for optimizing React's performance by minimizing renders.
 
 1. [Part 1 - Understanding Renders](https://jithyan.github.io/blog/posts/understanding-renders)
 2. Part 2 - Understanding Memoization (this post)
