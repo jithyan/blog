@@ -9,7 +9,7 @@ author:
 
 ---
 
-This is the second article in a series covering common techniques for optimizing React's performance by minimizing renders.
+This is the second article in a series covering techniques for optimizing React's performance by minimizing renders.
 
 1. [Part 1 - Understanding Renders](https://jithyan.github.io/blog/posts/understanding-renders)
 2. Part 2 - Understanding Memoization (this post)
@@ -17,7 +17,7 @@ This is the second article in a series covering common techniques for optimizing
 
 ---
 
-In the [previous article](https://jithyan.github.io/blog/posts/understanding-renders), we've covered why a component can re-render, and how variables are given new references on each render.
+In the [previous article](https://jithyan.github.io/blog/posts/understanding-renders), we covered why a component can re-render, and how variables are given new references on each render.
 
 Now that we have a better understanding of the basics, we can begin to cover how we can optimize a React app.
 However in order to do so, we need to actually work on an example application. The example I'm about to introduce is incredibly silly and quite long, but we need it to be a few components deep so we could systematically walk through how it could be optimized.
@@ -51,8 +51,9 @@ function App() {
 
 function RandomNumberListAndCounter({ length }) {
   const [counter, setCounter] = useState(0);
-  // We keep the random number list in state, so that we can control
-  // when the list of random numbers is updated, independent of re-renders of the component.
+  // We keep the random number list in state, so that
+  //we can control when the list of random numbers is
+  //updated, independent of re-renders of the component.
   const [randomNumbers, setRandomNumbers] = useState(
     generateListOfRandomNumbers(length)
   );
@@ -172,7 +173,7 @@ A few observations about the profiler:
 
 1. We can see the total time it took to render `RandomNumberListAndCounter` and all its children was a whopping **1.25 seconds**!
 2. `App` did not re-render (we can tell because of its gray color).
-3. Even though only the text "Clicked 1 times" is what changed, all the child components of `RandomNumberListAndCounter` _re-rendered_.
+3. Even though only the text "Clicked 1 times" (which belongs to `FancyHeader`) is what changed, all the child components of `RandomNumberListAndCounter` _re-rendered_.
 
 ## Optimizing the Example
 
@@ -232,23 +233,28 @@ So should we wrap all our components in the example with `React.memo`?
 
 No. It's neither necessary nor optimal.
 
-If look at the component hierarchy diagram again, we can see that the memoizing the following components is redundant:
+Let's take another look at the component hierarchy diagram:
+
+![Component Hierarchy](/blog/assets/blog/reducing-re-renders/component-hierarchy.png)
+
+From both the code and the component hierarchy, we can see that memoizing the following components would be redundant:
 
 - `App`: This is the root component. It's pointless memoizing this as it has no parent component to trigger any re-renders.
-- `RandomNumberListAndCounter`: In the context of our example, this component will only re-render when its state, `counter`, changes. Its parent component, `App`, doesn't also have any state so it would never re-render. Therefore wrapping it with `React.memo` is redundant, as memoized components will continue to re-render when its internal state changes (which is what we want).
-- `RandomlyStyledNumber`: This component will **only** re-render when its parent, `FancyNumberListFormatter`, re-renders. Therefore, only memoizing its parent is sufficient.
-- `FancyHeader`: This component depends on `counter`, as its passed as a prop. We know that the only thing in our app that triggers a re-render is the `counter` being updated. Therefore, wrapping this in `React.memo` is redundant.
+- `RandomNumberListAndCounter`: In the context of our example, this component will only re-render when its state, `counter`, changes. Its parent component, `App`, doesn't also have any state so it would never re-render. Therefore wrapping it with `React.memo` is redundant, as memoized components will continue to re-render when its internal state or context changes (which is what we want).
+- `RandomlyStyledNumber`: This component will **only** re-render when its _parent_, `FancyNumberListFormatter`, re-renders. Therefore, only memoizing its parent is sufficient.
+- `FancyHeader`: This component depends on `counter`, as it's passed as a prop. We know that the only thing in our app that triggers a re-render is the `counter` being incremented. Therefore, wrapping this in `React.memo` is redundant - because calling a memoized `FancyHeader` with an incremented `counter` prop will trigger a re-render since the props have changed.
 
-So only these 2 components would benefit from memo:
+So only these 2 components would benefit from `memo`:
 
 1. `FancyNumberListFormatter`
 2. `ButtonWithFooter`
 
-Both of the above components depend on the `length` prop, and not `counter`. When `counter` changes, these components end up re-rendering, so they're good candidates for memoization.
+Both of the above components only depend on the `length` prop, and do not care about `counter`. When `counter` changes, these components end up re-rendering, so they're good candidates for memoization.
 
 Let's go ahead and do just that:
 
 ```javascript
+/** First change - wrap our existing components with memo: **/
 const FancyNumberListFormatterMemoized = React.memo(FancyNumberListFormatter);
 const ButtonWithFooterMemoized = React.memo(ButtonWithFooter);
 
@@ -274,6 +280,7 @@ function RandomNumberListAndCounter({ length }: { length: number }) {
   return (
     <div>
       <FancyHeader counter={counter} />
+      {/** Then we use the memoized components: **/}
       <FancyNumberListFormatterMemoized numberList={randomNumbers} />
       <ButtonWithFooterMemoized
         config={configProp}
@@ -298,9 +305,9 @@ But the flamegraph isn't showing all the re-rendering components, so let's switc
 
 ![Ranking of memoized components](/blog/assets/blog/reducing-re-renders/memo-ranked.png)
 
-Only two components should re-render: `RandomNumberListFormatter` and `FancyHeader`. `RandomNumberListFormatter` contains the state `counter`, which changes, and `FancyHeader` takes in the prop `counter`.
+Only two components _should_ re-render: `RandomNumberListFormatter` and `FancyHeader`. `RandomNumberListFormatter` contains the state `counter`, which changes, and `FancyHeader` takes in the prop `counter`.
 
-But it also looks like `ButtonWithFooter` is re-rendering, even though it doesn't care about the `counter` value.
+But it also looks like `ButtonWithFooter` is re-rendering, even though its props doesn't include the `counter` value.
 
 So why would `ButtonWithFooter` re-render despite being memoized and having no props change?
 
@@ -329,7 +336,7 @@ are not equal (remember `{} === {}` evaluates to `false`).
 
 And in our example, we're creating **new objects** for `incrementOnClick` and `configProp` on _every render_.
 
-We can easily fix this by using `useMemo`, to cache the objects:
+We can easily fix this by using `useMemo`, to cache the object references:
 
 ```jsx
 const incrementOnClick = useMemo(
@@ -357,12 +364,14 @@ And the new Ranked profiler result is:
 
 Now only the two expected components re-render.
 
-But... notice the awkward syntax for the incrementer. Since `useMemo` accepts a function, and caches the return value of that function,
-we need to pass in a function that returns a function.
-Instead, we can use `useCallback` instead of `useMemo` - its explicit purpose is to cache callbacks (aka functions):
+But... notice the awkward syntax for the cached `incrementOnClick`. We want to cache the function itself, not what it returns.
+`useMemo` accepts a function, and caches _the result_ of that function. So to get around that, we pass in a function, that `returns`
+the function whose reference we want cached.
+
+Instead, we can use `useCallback` instead of `useMemo` - its explicit purpose is to cache callback (i.e. function) references:
 
 ```jsx
-const incrementer = useCallback(() => {
+const incrementOnClick = useCallback(() => {
   setCounter((prev) => prev + 1);
 }, []);
 ```

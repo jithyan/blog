@@ -1,5 +1,3 @@
-import { CMS_NAME } from "../../lib/constants";
-
 const Intro = () => {
   return (
     <hgroup className="flex-col flex items-center md:justify-between pt-12 pb-12 md:mb-12">
