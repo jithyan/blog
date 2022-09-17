@@ -17,20 +17,25 @@ This is the final article in a series covering techniques for optimizing React's
 
 ---
 
-In the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we worked through an example application and used memoization to reduce unnecessary renders. However, as I said in the [very first article](https://jithyan.github.io/blog/posts/understanding-renders) of this series, there's a small cost with memoizing. And those costs _could_ add up significantly if we have tonnes of components being memoized.
+In the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we worked through an example application and used memoization to reduce unnecessary renders. However, as I said in the [very first article](https://jithyan.github.io/blog/posts/understanding-renders) of this series, there's a small cost with memoizing. And these costs _could_ add up significantly if we have tonnes of components being memoized.
 
-So let's see how we could re-write our memoized application in a way to minimize calls to memo.
+So let's see how we could re-write our memoized example application from the [previous article](https://jithyan.github.io/blog/posts/understanding-memoization) in a way that minimizes usage of memoization.
 
 ### Using useRef to replace useCallback or useMemo
 
-In our example from the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we can see we're calling `useCallback` with an empty dependency array:
+In our example from the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we can see we're calling `useCallback` with an _empty_ dependency array:
 
 ```javascript
 const [counter, setCounter] = useState(0);
 
-const incrementOnClick = useCallback(() => {
-  setCounter((prev) => prev + 1);
-}, []);
+const incrementOnClick = useCallback(
+  () => {
+    setCounter((prev) => prev + 1);
+  },
+  // We don't pass anything into the array, and the React linter
+  // does not complain.
+  []
+);
 ```
 
 We can do this because `React` guarantees `setCounter` to be stable.
@@ -51,8 +56,8 @@ const incrementOnClick = useRef(() => {
 />;
 ```
 
-`useRef` returns a reference to a mutable object. Like in `useState`, the initial value you pass is assigned
-only once, no matter how many times the component re-renders. How `useRef` works is beyond the scope of this post, but you can [read more on it here](https://beta.reactjs.org/apis/react/useRef).
+`useRef` returns a reference to a [mutable object](https://blog.logrocket.com/immutability-in-react-ebe55253a1cc/). Like in `useState`, the initial value you pass is assigned
+only once, no matter how many times the component re-renders. How `useRef` works is beyond the scope of this post, but you can [read more about it here](https://beta.reactjs.org/apis/react/useRef).
 
 This technique is common in React libraries where returning stable references from hooks is important.
 
@@ -78,9 +83,9 @@ function Component() {
 }
 ```
 
-The key point of the above code is that `doABunchOfStuff` and `config` isn't _referencing_ any data defined **in the component**.
+The key point of the above code is that `doABunchOfStuff` and `config` isn't _referencing_ any data or functions defined **_in_ the component**.
 
-It does not need to tie itself to React's rendering.
+Therefore, it does not need to tie itself to React's rendering.
 
 We can throw away concerns of stable references and garbage collection by just defining `doABunchOfStuff` and `config` outside of the component:
 
@@ -102,7 +107,13 @@ There is one more technique I'd like to dive into, and it's one where you can mi
 
 It's best understood by re-writing our example.
 
-First, let's put all the code related to the `counter` in one component, called `FancyCounter`:
+To refresh your memory, this the current component hierarchy of the example app:
+
+![Component Hierarchy](/blog/assets/blog/reducing-re-renders/component-hierarchy.png)
+
+We are going to change the hierarchy so that less components need to re-rendered on a state change.
+
+First, let's put all the code related to the `counter` state in one component, called `FancyCounter`:
 
 ```jsx
 const ButtonWithFooterMemoized = React.memo(ButtonWithFooter);
@@ -124,6 +135,13 @@ function FancyCounter({ length, children }) {
 
   return (
     <div>
+      {/**
+    Note that we now will only render
+    FancyHeader and ButtonWithFooterMemoized,
+    but not FancyNumberListFormatter - we instead only include
+    a reference to some children passed down by the
+    parent component. 
+    */}
       <FancyHeader counter={counter} />
       {children}
       <ButtonWithFooterMemoized
@@ -153,16 +171,22 @@ function RandomNumberListAndCounter({ length }: { length: number }) {
 
   return (
     <FancyCounter length={length}>
+      {/** Note that this is no longer memoized! */}
       <FancyNumberListFormatter numberList={randomNumbers} />
     </FancyCounter>
   );
 }
 ```
 
-We pass in `FancyNumberListFormatter` as the `children` of `FancyCounter`. `RandomNumberListAndCounter` will only re-render if its parent changes,
+We pass in `FancyNumberListFormatter` as the `children` of `FancyCounter`.
+`RandomNumberListAndCounter` will only re-render if its parent changes,
 and in our app, this will never happen. So `React.memo` for `FancyNumberListFormatter` is no longer needed!
 
-We can see the React Profiler gives the same results:
+This is what the new component hierarchy now looks like:
+
+![New Component Hierarchy](/blog/assets/blog/reducing-re-renders/push-state-down-hierarchy.png)
+
+We can see that the React Profiler gives the same results:
 
 ![Push state down flamegraph](/blog/assets/blog/reducing-re-renders/pushed-state-flamegraph.png)
 
@@ -175,18 +199,26 @@ If the child component has re-rendered, and the `children` prop remains the same
 
 ### Wrap Up
 
-When we want to create stable references, we can:
+I do want to emphasize though, that the optimizations I've mentioned above _could_ make your code a little harder to read.
+In a lot of application code, readability and maintainability are higher concerns than performance. Libraries on the other hand need
+to emphasize on having more performant code.
+
+So ideally, you'd use these optimizations when you need to, and not simply for the sake of "performance".
+
+And now below, I will summarize everything we've learnt in this entire series.
+
+**When we want to create stable references, we can:**
 
 1. Define objects and functions outside of a component, if they don't rely on variables defined in the component itself.
 2. If they do depend on variables defined in the component, we can use `useCallback` and `useMemo`.
 3. If they depend on variables defined in the component that are already stable, we can use `useRef` instead.
 
-When we want to prevent redundant expensive computations on re-render, we can:
+**When we want to prevent redundant expensive computations on re-render, we can:**
 
-1. Pass an initialization function to `useState`, if the result of the computation needs to be part of the component state.
+1. Pass an initialization function to `useState` or `useReducer`, if the result of the computation needs to be part of the component state.
 2. Use `useMemo`.
 
-When we want to minimize redundant renders of a component, we can:
+**When we want to minimize redundant renders of a component, we can:**
 
 1. Use `React.memo` so that a component will only re-render if its props change.
 2. Reorganize the component tree, so that state changes are localized to components who consume that state.
