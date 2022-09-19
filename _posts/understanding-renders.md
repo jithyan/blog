@@ -1,6 +1,6 @@
 ---
 title: "Optimizing React: Part 1 - Understanding Renders"
-excerpt: "A discussion of how memo, useMemo, useCallback and pushing state down can minimize re-renders. In part 1, I go over the basics of what happens when React renders."
+excerpt: "In this first part of a series on how the performance of React components can be optimized, I go over the basics of what happens when a React component renders."
 date: "2022-09-08T20:00:00.000Z"
 publish: true
 author:
