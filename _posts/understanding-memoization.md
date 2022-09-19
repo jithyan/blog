@@ -1,6 +1,6 @@
 ---
 title: "Optimizing React: Part 2 - Understanding Memoization"
-excerpt: "In part 2 of the series, I go over how memoization can be used to optimize an example application."
+excerpt: "In this part, I go over how memoization (memo, useMemo and useCallback) can be used to optimize an example application."
 date: "2022-09-12T20:00:00.000Z"
 publish: true
 author:

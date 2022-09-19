@@ -1,6 +1,6 @@
 ---
 title: "Optimizing React: Part 3 - Avoiding Memoization"
-excerpt: "In this final part of the series, I go over some techniques to avoid memoization."
+excerpt: "The final part of my series on optimizing React components, I go over some techniques to minimize having to use memoization."
 date: "2022-09-18T20:00:00.000Z"
 publish: true
 author:
