@@ -13,12 +13,20 @@ const Footer = () => {
               Github
             </a>
           </li>
-          <li className="">
+          <li className="mr-4 max-w-md">
             <a
               href="https://www.linkedin.com/in/jithyan/"
               className=" hover:text-sky-400 "
             >
               LinkedIn
+            </a>
+          </li>
+          <li className="">
+            <a
+              href="https://jithyan.github.io/resume/"
+              className=" hover:text-sky-400 "
+            >
+              Resume
             </a>
           </li>
         </ul>

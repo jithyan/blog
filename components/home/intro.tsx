@@ -11,7 +11,7 @@ const Intro = () => {
       <h3 className="text-gray-300">
         By{" "}
         <a
-          href="https://www.linkedin.com/in/jithyan/"
+          href="https://jithyan.github.io/resume/"
           className="text-teal-500 underline hover:text-sky-400 duration-200 transition-colors"
         >
           Jithya Nanayakkara
