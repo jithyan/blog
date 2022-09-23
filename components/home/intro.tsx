@@ -6,13 +6,14 @@ const Intro = () => {
       </h1>
       <h2 className="text-center text-gray-300 md:text-left text-lg mt-5 mb-1 md:pl-8">
         A place to consolidate my thoughts on building web apps in React and
-        Typescript.
+        TypeScript.
       </h2>
       <h3 className="text-gray-300">
         By{" "}
         <a
           href="https://jithyan.github.io/resume/"
           className="text-teal-500 underline hover:text-sky-400 duration-200 transition-colors"
+          target="_blank"
         >
           Jithya Nanayakkara
         </a>

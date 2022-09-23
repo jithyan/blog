@@ -9,6 +9,7 @@ const Footer = () => {
             <a
               href="https://github.com/jithyan"
               className="hover:text-sky-400 "
+              target="_blank"
             >
               Github
             </a>
@@ -17,6 +18,7 @@ const Footer = () => {
             <a
               href="https://www.linkedin.com/in/jithyan/"
               className=" hover:text-sky-400 "
+              target="_blank"
             >
               LinkedIn
             </a>
@@ -24,7 +26,8 @@ const Footer = () => {
           <li className="">
             <a
               href="https://jithyan.github.io/resume/"
-              className=" hover:text-sky-400 "
+              className=" hover:text-sky-400"
+              target="_blank"
             >
               Resume
             </a>

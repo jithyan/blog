@@ -7,17 +7,15 @@ author:
   name: Jithya Nanayakkara
 ---
 
-This is a small collection of features and patterns I've found useful when working with TypeScript projects. Do note, what I've written is somewhat advanced, and wouldn't be particularly useful unless you already know your way around TypeScript.
+This post covers a small collection of features and patterns I've found useful when working on TypeScript projects. Do note, what I've written is somewhat advanced, and isn't particularly useful for beginners.
 
 ## Creating type safe utility functions
 
 There are times when certain libraries or APIs don't have great type definitions, or unexpected types.
-An example of this you may have come across is `Object.keys`, which returns `string[]` rather than the actual keys ([and this is the intended behaviour by the TypeScript authors](https://github.com/Microsoft/TypeScript/issues/12870)).
+For example, you may have experienced the unpleasant suprise when `Object.keys` returns a `string[]` rather than the actual keys of the object ([and this is the intended behaviour by the TypeScript authors](https://github.com/Microsoft/TypeScript/issues/12870)).
 
 When you do come across this situation, don't shy away from creating utility functions whose sole purpose is to get better types.
-I always create a type safe `Object.keys` helper, and whenever I use the [ImmutableJS](https://immutable-js.com/) library, which has notoriously lousy types, I create separate functions for accessing those objects rather than calling the methods on them directly.
-
-Here's the helper I use for `Object.keys`:
+For the `Object.keys` problem, I always create a type safe `Object.keys` helper in my TypeScript projects, like this:
 
 ```jsx
 function getObjectKeys<Object extends Record<string, any>>(
@@ -29,7 +27,7 @@ function getObjectKeys<Object extends Record<string, any>>(
 
 ## Conditional types
 
-Conditional types essentially allow you to check if a type `A`, is, or is a subset of another type `B`.
+Conditional types essentially allow you to check if a type `A`, is equal to, or is a subset of another type `B`.
 You use it in the form `A extends B ? <true-expression> : <false-expression>`.
 
 One example of where I use this, is when I create a `DeepPartial` utility type - the inbuilt `Partial` type only
@@ -62,7 +60,7 @@ type PartialPerson = DeepPartial<Person>;
 }
 ```
 
-1. DeepPartial takes in 1 Generic parameter, `Object`, and we constrain it to be a plain JS object
+1. DeepPartial takes in a Generic parameter, `Object`, and we constrain it to be a plain JS object
 2. We extract the keys in `Object` using: `keyof Object`
 3. We then iterate over every key using the operator `in`, and assign the key to the variable `Property`
 4. We add a new field to the resulting object with an optional field: `[Property]?`
@@ -72,9 +70,9 @@ type PartialPerson = DeepPartial<Person>;
 
 ### Validation messages
 
-We can even use conditional types to provide custom validation messages to arguments of a function!
+Another place where I use conditional types, is to provide custom validation messages to arguments of a function.
 
-> I don't recommend you add this complexity to your application code, but this would be useful if you maintain a library.
+> I don't recommend you add this complexity to your application code, but this could be useful if you maintain a library.
 
 ```jsx
 type Validate<
@@ -125,8 +123,9 @@ Note: `Capitalize` is another inbuilt TypeScript utility.
 
 ## Using `infer`
 
-You use `infer` with conditional types in order to extract types to another generic variable.
-Seeing this in action would help you understand what the above means better.
+`infer` is used with conditional types in order to extract types in the condition to another generic variable.
+This is not something I particularly understand or can explain well, but I find looking at a couple of examples
+is more helpful in understanding `infer`.
 
 > Remember, we can only use `infer` in the `extends` clause of a conditional type.
 
@@ -140,9 +139,8 @@ type KebabToSnakeCase<S extends string> = S extends `${infer Char}${infer Rest}`
   : S;
 
 type Result = KebabToSnakeCase<"convert-this-kebab-case-to-snake-case">;
+// Gives: "convert_this_kebab_case_to_snake_case";
 
-// results in:
-// "convert_this_kebab_case_to_snake_case";
 ```
 
 What the following line:
@@ -185,7 +183,7 @@ impact on the actual execution of our app - after all, the compiler just strips 
 all the type definitions.
 
 However, one of the most useful patterns I've found is to derive types from
-actual JavaScript objects. The trick is to use `Readonly` or `as const` to
+actual JavaScript objects. The trick is to use `as const` to
 ensure that the most accurate types would be derived.
 
 For example, if you were to do this:
@@ -202,7 +200,7 @@ However, if we did this instead:
 const fieldNames = ["name", "age"] as const;
 ```
 
-This would give you `("name" | "age")[]` - far more useful. We can then extract the values in the array using:
+This would give you `("name" | "age")[]` - which is far more useful. We can then extract the values in the array using:
 
 ```jsx
 const fieldNames = ["name", "age"] as const;
@@ -211,20 +209,22 @@ type FieldName = typeof fieldNames[number];
 // results in: FieldName = "name" | "age"
 ```
 
-Below is an example of a situation where I used this approach. I needed to make a GET request
+Below is an example of a situation where I used this approach. My memory of it is rather hazy, but from what I recall,
+I needed to make a GET request
 to a REST API, and I could specify what fields in the data I want returned in the response. I simply
-had to pass the field names as query parameters in the URL.
+had to pass the field names as query parameters in the URL (in a comma separated format).
 
 Rather than putting the field names as query parameters in a hard to read URL, I decided to put the fields I want
-in an array, then convert the array to the appropriate query parameters.
+in an array, then convert the array to the appropriate query parameters. This was quite useful, because I discovered in production
+that there were multiple other field names with the data I needed, and I could easily add them to the array over time.
 
 However, TypeScript types become an issue - how does it know what the response object type is
-when it could change depending on what I put in the Javascript array?
+given my JavaScript array?
 
 This is how I did it:
 
 ```jsx
-const pickFields = ["age", "name", "height", "isMember"] as const;
+const pickFields = ["age", "isMember"] as const;
 
 interface ApiResponse {
   age: number;
@@ -235,8 +235,12 @@ interface ApiResponse {
   height: string;
   isMember: boolean;
 }
-// Note that I'm not specifying pickFields is of type "Array<keyof ApiResponse>"!
+// Note that I'm not specifying pickFields
+// is of type "Array<keyof ApiResponse>"!
 
+/**
+ * I'm constraining it to only the fields I'm interested in
+ */
 async function getPersonDetails<
   RequestedFields extends ReadonlyArray<typeof pickFields[number]>
 >(
@@ -249,14 +253,13 @@ async function getPersonDetails<
   return callRestApi("/v1/person", fieldNames) as any;
 }
 
-// Will give you { age: number; isMember: boolean; height: string}
-const response = await getPersonDetails("age", "isMember", "height");
+// Will give you { age: number; isMember: boolean; }
+const response = await getPersonDetails(...pickFields)
 ```
 
 This is the really cool part of making `pickFields` a `const` - TypeScript
-can figure out from the signature of `getPersonDetails` that the values in
-`pickFields` **are a member of** `ApiResponse`!
+can figure out that the values in `pickFields` **are a member of** `ApiResponse`!
 
 If we put the string "woof" into `pickFields`, `getPersonDetails` will fail compilation with an error, because "woof" is not a field in `ApiResponse`!
 
-And if we put "meow" into the arguments of `getPersonDetails`, it will also fail for the same reason.
+Likewise, putting it into the arguments of `getPersonDetails`, will also fail compilation for the same reason.
