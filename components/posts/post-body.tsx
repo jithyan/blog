@@ -5,6 +5,7 @@ import { PrismAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import remarkGfm from "remark-gfm";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { CodeComponent } from "react-markdown/lib/ast-to-react";
+import { generateIdFromText } from "../../lib/ids";
 
 type Props = {
   content: string;
@@ -40,6 +41,10 @@ const PostBody = ({ content }: Props) => {
         className={markdownStyles["markdown"]}
         remarkPlugins={[remarkGfm]}
         components={{
+          h2: (props) => {
+            const id = generateIdFromText(props.children[0]);
+            return <h2 {...props} id={id} />;
+          },
           code: CodeBlock,
         }}
       >
