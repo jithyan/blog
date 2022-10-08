@@ -22,7 +22,7 @@ In the [previous article](https://jithyan.github.io/blog/posts/understanding-ren
 Now that we have a better understanding of the basics, we can begin to cover how we can optimize a React app.
 However in order to do so, we need to actually work on an example application. The example I'm about to introduce is incredibly silly and quite long, but we need it to be a few components deep so we could systematically walk through how it could be optimized.
 
-### A Random Number List Generator and Counter Example
+## A Random Number List Generator and Counter Example
 
 This is what our example app looks like:
 
