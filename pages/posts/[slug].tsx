@@ -11,6 +11,7 @@ import Head from "next/head";
 import markdownToHtml from "../../lib/markdownToHtml";
 import { readingTime } from "reading-time-estimator";
 import type PostType from "../../interfaces/post";
+import { Comments } from "../../components/posts/comments";
 
 type Props = {
   post: PostType;
@@ -35,25 +36,20 @@ export default function Post({
     <Layout>
       <Container>
         <Header />
-        {router.isFallback ? (
-          <PostTitle>Loading…</PostTitle>
-        ) : (
-          <>
-            <article className="mb-32">
-              <Head>
-                <title>{post.title}</title>
-              </Head>
-              <PostHeader
-                title={post.title}
-                coverImage={post.coverImage}
-                date={post.date}
-                author={post.author}
-                estimatedReadingTime={estimatedReadingTime.text}
-              />
-              <PostBody content={post.content} />
-            </article>
-          </>
-        )}
+        <article id="blog-post" className="mb-32">
+          <Head>
+            <title>{post.title}</title>
+          </Head>
+          <PostHeader
+            title={post.title}
+            coverImage={post.coverImage}
+            date={post.date}
+            author={post.author}
+            estimatedReadingTime={estimatedReadingTime.text}
+          />
+          <PostBody content={post.content} />
+          <Comments />
+        </article>
       </Container>
     </Layout>
   );
