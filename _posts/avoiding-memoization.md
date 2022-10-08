@@ -21,7 +21,7 @@ In the [last post](https://jithyan.github.io/blog/posts/understanding-memoizatio
 
 So let's see how we could re-write our memoized example application from the [previous article](https://jithyan.github.io/blog/posts/understanding-memoization) in a way that minimizes usage of memoization.
 
-### Using useRef to replace useCallback or useMemo
+## Using useRef to replace useCallback or useMemo
 
 In our example from the [last post](https://jithyan.github.io/blog/posts/understanding-memoization), we can see we're calling `useCallback` with an _empty_ dependency array:
 
@@ -67,7 +67,7 @@ The only thing to watch out for, is that since it's a mutating object, React has
 Usually we only want React to know if a variable has changed when we synchronize with effects or display the data - that's why we use
 hooks like `useState`.
 
-### Defining variables outside a component
+## Defining variables outside a component
 
 Not everything needs to go into `useState`, or needs to be defined in a component. Too often, I find code like this:
 
@@ -101,7 +101,7 @@ function Component() {
 }
 ```
 
-### Pushing State Down
+## Pushing State Down
 
 There is one more technique I'd like to dive into, and it's one where you can minimize having to use `React.memo`. This technique involves restructuring your component tree hierarchy, so that state changes are localized to components that display them. Components that are meant to be rendered at the bottom of the tree, are passed down as `children`.
 
@@ -197,7 +197,7 @@ This technique was lifted straight from Dan Abramov himself - and I highly recom
 The basic idea is that the prop `children`, is a reference to some React elements created by the parent.
 If the child component has re-rendered, and the `children` prop remains the same, React knows that `children` doesn't have to be rendered again.
 
-### Wrap Up
+## Wrap Up
 
 I do want to emphasize though, that the optimizations I've mentioned above _could_ make your code a little harder to read.
 In a lot of application code, readability and maintainability are higher concerns than performance. Libraries on the other hand need

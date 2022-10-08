@@ -1,5 +1,5 @@
 ---
-title: "My Current Favourite TypeScript Tips"
+title: "My Top TypeScript Tips"
 excerpt: "A list of TypeScript patterns and features that I find useful."
 date: "2022-10-01T20:00:00.000Z"
 publish: true

@@ -6,17 +6,19 @@ import Header from "../../components/layout/header";
 import PostHeader from "../../components/posts/post-header";
 import Layout from "../../components/layout/layout";
 import { getPostBySlug, getAllPosts } from "../../lib/api";
-import PostTitle from "../../components/posts/post-title";
 import Head from "next/head";
 import markdownToHtml from "../../lib/markdownToHtml";
 import { readingTime } from "reading-time-estimator";
 import type PostType from "../../interfaces/post";
+import { Comments } from "../../components/posts/comments";
+import { TableOfContents } from "../../components/posts/table-of-contents";
 
 type Props = {
   post: PostType;
   morePosts: PostType[];
   preview?: boolean;
   estimatedReadingTime: ReturnType<typeof readingTime>;
+  headings: string[];
 };
 
 export default function Post({
@@ -24,6 +26,7 @@ export default function Post({
   morePosts,
   preview,
   estimatedReadingTime,
+  headings,
 }: Props) {
   const router = useRouter();
 
@@ -35,25 +38,21 @@ export default function Post({
     <Layout>
       <Container>
         <Header />
-        {router.isFallback ? (
-          <PostTitle>Loading…</PostTitle>
-        ) : (
-          <>
-            <article className="mb-32">
-              <Head>
-                <title>{post.title}</title>
-              </Head>
-              <PostHeader
-                title={post.title}
-                coverImage={post.coverImage}
-                date={post.date}
-                author={post.author}
-                estimatedReadingTime={estimatedReadingTime.text}
-              />
-              <PostBody content={post.content} />
-            </article>
-          </>
-        )}
+        <article id="blog-post" className="mb-32">
+          <Head>
+            <title>{post.title}</title>
+          </Head>
+          <PostHeader
+            title={post.title}
+            coverImage={post.coverImage}
+            date={post.date}
+            author={post.author}
+            estimatedReadingTime={estimatedReadingTime.text}
+          />
+          <TableOfContents headings={headings} />
+          <PostBody content={post.content} />
+          <Comments />
+        </article>
       </Container>
     </Layout>
   );
@@ -77,6 +76,12 @@ export async function getStaticProps({ params }: Params) {
   const content = markdownToHtml(post.content || "");
   const estimatedReadingTime = readingTime(content, 125);
 
+  const l2Headings = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("## "))
+    .map((line) => line.replace("## ", "").trim());
+
   return {
     props: {
       post: {
@@ -84,6 +89,7 @@ export async function getStaticProps({ params }: Params) {
         content,
       },
       estimatedReadingTime,
+      headings: l2Headings,
     },
   };
 }
