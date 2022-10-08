@@ -24,8 +24,19 @@ const PostHeader = ({
       <div className="max-w-2xl mx-auto">
         <PostTitle>{title}</PostTitle>
         <div className="mt-2 mb-6 text-lg text-white font-semibold">
-          <DateFormatter dateString={date} /> | <span>Jithya Nanayakkara</span>{" "}
-          | <span>{estimatedReadingTime}</span>
+          <div className="mb-1">
+            <DateFormatter dateString={date} /> |{" "}
+            <span>Jithya Nanayakkara</span> |{" "}
+            <span>{estimatedReadingTime}</span>
+          </div>
+          <div>
+            <a
+              className="text-base  text-teal-500 underline hover:text-sky-400"
+              href="#inject-comments-for-uterances"
+            >
+              Jump to comments
+            </a>
+          </div>
         </div>
       </div>
     </>
