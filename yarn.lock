@@ -995,6 +995,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"glob@npm:^9.2.0":
+  version: 9.3.0
+  resolution: "glob@npm:9.3.0"
+  dependencies:
+    fs.realpath: ^1.0.0
+    minimatch: ^7.4.1
+    minipass: ^4.2.4
+    path-scurry: ^1.6.1
+  checksum: 9beb4f1cdc9585412efd991a9786c1ee6816dfd0537494fd552c333fa3d4b041fce5681bce21d14651e41479f60866e10a35a2ce2571fd40b7cf73842ea12192
+  languageName: node
+  linkType: hard
+
 "graceful-fs@npm:^4.2.6":
   version: 4.2.10
   resolution: "graceful-fs@npm:4.2.10"
@@ -1394,6 +1406,13 @@ __metadata:
   dependencies:
     yallist: ^4.0.0
   checksum: f97f499f898f23e4585742138a22f22526254fdba6d75d41a1c2526b3b6cc5747ef59c5612ba7375f42aca4f8461950e925ba08c991ead0651b4918b7c978297
+  languageName: node
+  linkType: hard
+
+"lru-cache@npm:^7.14.1":
+  version: 7.18.3
+  resolution: "lru-cache@npm:7.18.3"
+  checksum: e550d772384709deea3f141af34b6d4fa392e2e418c1498c078de0ee63670f1f46f5eee746e8ef7e69e1c895af0d4224e62ee33e66a543a14763b0f2e74c1356
   languageName: node
   linkType: hard
 
@@ -1979,6 +1998,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"minimatch@npm:^7.4.1":
+  version: 7.4.2
+  resolution: "minimatch@npm:7.4.2"
+  dependencies:
+    brace-expansion: ^2.0.1
+  checksum: 9e341b04e69d5ab03e4206dcb61c8a158e3b8709628bf5e1a4eaa9f3b72c0ba925e24ad959b1f6ce6835caa5a927131d5087fae6836b69e7d99d7d5e63ef0bd8
+  languageName: node
+  linkType: hard
+
 "minimist@npm:^1.2.6":
   version: 1.2.6
   resolution: "minimist@npm:1.2.6"
@@ -2043,6 +2071,13 @@ __metadata:
   dependencies:
     yallist: ^4.0.0
   checksum: 5d95a7738c54852ba78d484141e850c792e062666a2d0c681a5ac1021275beb7e1acb077e59f9523ff1defb80901aea4e30fac10ded9a20a25d819a42916ef1b
+  languageName: node
+  linkType: hard
+
+"minipass@npm:^4.0.2, minipass@npm:^4.2.4":
+  version: 4.2.5
+  resolution: "minipass@npm:4.2.5"
+  checksum: 4f9c19af23a5d4a9e7156feefc9110634b178a8cff8f8271af16ec5ebf7e221725a97429952c856f5b17b30c2065ebd24c81722d90c93d2122611d75b952b48f
   languageName: node
   linkType: hard
 
@@ -2292,6 +2327,16 @@ __metadata:
   version: 1.0.7
   resolution: "path-parse@npm:1.0.7"
   checksum: 49abf3d81115642938a8700ec580da6e830dde670be21893c62f4e10bd7dd4c3742ddc603fe24f898cba7eb0c6bc1777f8d9ac14185d34540c6d4d80cd9cae8a
+  languageName: node
+  linkType: hard
+
+"path-scurry@npm:^1.6.1":
+  version: 1.6.1
+  resolution: "path-scurry@npm:1.6.1"
+  dependencies:
+    lru-cache: ^7.14.1
+    minipass: ^4.0.2
+  checksum: 7ba57e823cb7bb879669a4e5e05a283cde1bb9e81b6d806b2609f8d8026d0aef08f4b655b17fc86b21c9c32807851bba95ca715db5ab0605fb13c7a3e9172e42
   languageName: node
   linkType: hard
 
@@ -2732,6 +2777,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rimraf@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "rimraf@npm:4.4.0"
+  dependencies:
+    glob: ^9.2.0
+  bin:
+    rimraf: dist/cjs/src/bin.js
+  checksum: 0cedaf9d138589d1bb0ab851f05804c6d30827aa66563472b04ab76245f83537e23e7b94f1f79ea6c368c0d84a18fcde6a756fca3a44c967e08792671b3a0a6e
+  languageName: node
+  linkType: hard
+
 "root-workspace-0b6124@workspace:.":
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
@@ -2754,6 +2810,7 @@ __metadata:
     remark: ^14.0.2
     remark-gfm: ^3.0.1
     remark-html: ^15.0.1
+    rimraf: ^4.4.0
     tailwindcss: ^3.1.8
     typescript: ^4.7.4
   languageName: unknown
