@@ -1,7 +1,7 @@
 ---
 title: "Filtering Unions in TypeScript"
-excerpt: "A small post on how to extract specific values from a union."
-date: "2023-03-24T20:00:00.000Z"
+excerpt: "A short post on how to extract specific values from a union."
+date: "2023-03-18T20:00:00.000Z"
 publish: true
 author:
     name: Jithya Nanayakkara
@@ -17,13 +17,13 @@ type Cake =
     | { name: "Rainbow cake"; sugarLevel: "high" };
 ```
 
-What if I want a new type, which is a union of all the names of cakes with a `sugarLevel` of `"high"`?
+What if I want a new type, `Breakfast`, which is a union of all the names of cakes with a `sugarLevel` of `"high"`?
 
 ```typescript
 type Breakfast = "Strawberry shortcake" | "Rainbow cake";
 ```
 
-Without having to manually type out all the names which fit the criteria, we can achieve this instead by extracting the values from the `Cake` type:
+Without having to manually type out all the names which fit the criteria, we can achieve this by extracting the values from the `Cake` type:
 
 ```typescript
 type Breakfast = {
@@ -35,11 +35,129 @@ type Breakfast = {
 // gives Breakfast = "Strawberry shortcake" | "Rainbow cake"
 ```
 
-Let's breakdown what happens:
+That bit of Typescript looks intimidating, so let's breakdown what happens:
 
-1. First we need to create a new (temporary) object - that's why the type opens with a `{`. This object is mapping of `Cake["name"]: Cake["name"] | never`. **Note:** `Cake["name"]` gives `"Nutella cheesecake" | "Fairy cupcake" | "Strawberry shortcake" | "Rainbow cake"`
-2. We then need to iterate over every value in the `Cake` union type. This is done using the `[value in union]` syntax.
-3. Every value we iterate over needs to be converted into a string, by indexing into the Cake object's `"name"` property. This is done using the `as` syntax.
-4. The previous step essentially created the key of the new object, now we need to associate it with a value. We still have access to the `Cake` value (I've named it `CakeDescription`) we're iterating over, so we check whether the `"sugarLevel"` equals `"high"` via the `extends` keyword.
-5. If it does equal `"high"` we return the name of the Cake, if not we return `never`.
-6. At the closing `}`, a new object type is created. We can extract all its values by passing a union of all its keys as the index - we already know the keys, as it's just `Cake["name"]`. Which is why it ends with `}[Cake["name"]];`
+1. We first want to extract all the _names_ of `Cake`. As every object in the `Cake` union has a `name` property, we can get a union of all the names using `Cake['name']`.
+2. We need to iterate over all the `Cake` objects. The only way I know of achieving this is by creating a new object and using the `in` operator. A simple example of this is:
+
+```typescript
+type PersonFields = "name" | "age" | "birthday";
+
+type Person = {
+    [Field in PersonFields]: string;
+};
+```
+
+`Person` above is equivalent to:
+
+```typescript
+type Person = { name: string; age: string; birthday: string };
+// this can also be written as Record<"name"|"age"|"birthday", string>
+```
+
+3. If we try to do the same thing with `Cake`, we come to a problem:
+
+```typescript
+// this will not work!
+type CakeObject = {
+    [CakeDescription in Cake]: string;
+};
+```
+
+> Type 'Cake' is not assignable to type 'string | number | symbol'.
+
+The reason you get an error, is that `CakeDescription` is an object of type `Cake`, and properties of objects need to be either strings, numbers or Symbols.
+
+This is where the `as` operator comes into play. We use it do some transformation of the current value (i.e. `CakeDescription`) in the interation:
+
+```typescript
+type CakeObject = {
+    [CakeDescription in Cake as CakeDescription["name"]]: string;
+};
+```
+
+We simply accessed the `name` property in `CakeDescription`. This results in the equivalent type:
+
+```typescript
+type CakeObject = Record<
+    | "Strawberry shortcake"
+    | "Rainbow cake"
+    | "Nutella cheesecake"
+    | "Fairy cupcake",
+    string
+>;
+```
+
+4. So far, every field in `CakeObject` has a value type of `string`. We need this to be the actual name of the cake we're currently iterating over. This can be done easily enough, as the value portion (the part after `:`) still has access to `CakeDescription`:
+
+```typescript
+type CakeObject = {
+    [CakeDescription in Cake as CakeDescription["name"]]: CakeDescription["name"];
+};
+```
+
+Which is equivalent to:
+
+```typescript
+type CakeObject = {
+    "Strawberry shortcake": "Strawberry shortcake";
+    "Rainbow cake": "Rainbow cake";
+    "Nutella cheesecake": "Nutella cheesecake";
+    "Fairy cupcake": "Fairy cupcake";
+};
+```
+
+5. However, we are only interested in `Cake`s with a `sugarLevel` of `"high"`. We introduce a condition using the `extends` operator, and return the name of the cake only if its `sugarLevel` is `"high"`, and `never` if it isn't:
+
+```typescript
+type CakeObject = {
+    [CakeDescription in Cake as CakeDescription["name"]]: CakeDescription["sugarLevel"] extends "high"
+        ? CakeDescription["name"]
+        : never;
+};
+```
+
+Which is equivalent to:
+
+```typescript
+type CakeObject = {
+    "Strawberry shortcake": "Strawberry shortcake";
+    "Rainbow cake": "Rainbow cake";
+    "Nutella cheesecake": never;
+    "Fairy cupcake": never;
+};
+```
+
+`never` is kind of like the opposite of `any`. It represents impossible types and Typescript doesn't allow you to perform any operation on them.
+
+6. The final step is to get all the values of `CakeObject`. We can do this by passing in the union of all its keys as the index:
+
+```typescript
+type CakeObject = {
+    [CakeDescription in Cake as CakeDescription["name"]]: CakeDescription["sugarLevel"] extends "high"
+        ? CakeDescription["name"]
+        : never;
+};
+
+type Breakfast = CakeObject[keyof CakeObject];
+```
+
+All the `never` types are removed from the resulting union, giving `"Strawberry shortcake" | "Rainbow cake"`!
+
+We could also have written it as:
+
+```typescript
+type Breakfast = CakeObject[Cake["name"]];
+```
+
+As the keys of `CakeObject` are all the `name` values of `Cake`.
+
+Knowing this, we can achieve extract the new type in one step as:
+
+```typescript
+type Breakfast = {
+    [CakeDescription in Cake as CakeDescription["name"]]: CakeDescription["sugarLevel"] extends "high"
+        ? CakeDescription["name"]
+        : never;
+}[Cake["name"]];
+```
