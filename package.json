@@ -10,10 +10,11 @@
   "dependencies": {
     "classnames": "^2.3.2",
     "date-fns": "^2.29.3",
+    "eslint-config-next": "latest",
     "gray-matter": "^4.0.3",
     "next": "latest",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "latest",
+    "react-dom": "latest",
     "react-markdown": "^8.0.3",
     "react-syntax-highlighter": "^15.5.0",
     "reading-time-estimator": "^1.7.2",
