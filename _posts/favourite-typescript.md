@@ -1,10 +1,10 @@
 ---
-title: "My Top TypeScript Tips"
-excerpt: "A list of TypeScript patterns and features that I find useful."
+title: "Useful Advanced Typescript Features"
+excerpt: "Some advanced TypeScript patterns and features that I find useful."
 date: "2022-10-01T20:00:00.000Z"
 publish: true
 author:
-  name: Jithya Nanayakkara
+    name: Jithya Nanayakkara
 ---
 
 This post covers a small collection of features and patterns I've found useful when working on TypeScript projects. Do note, what I've written is somewhat advanced, and isn't particularly useful for beginners.
@@ -96,38 +96,39 @@ sendMessage("hello");
 
 ## Renaming Fields of an Object
 
-Let's say you need to add getter functions to an object, based on the existing fields in it.
+Let's say you want to create a new object, whose keys are the same as another object, but _in uppercase_.
 You can use the `as` keyword when iterating over fields using `in`, to rename the existing fields:
 
 ```jsx
-type Getters<Object extends Record<string, any>> = {
-  [Property in keyof Object as `get${Capitalize<
-    string & Property
-  >}`]: () => Object[Property];
+const some_constants = {
+  max_age: 100,
+  minimum_age: 0,
+  country_of_residence: "AU"
 };
 
-const person = {
-  name: "John",
-  age: 18,
-};
-type PersonAsGetters = Getters<typeof person>;
+type SomeConstantsInUppercase = {
+  [Property in keyof typeof some_constants as Uppercase<Property>]: typeof some_constants[Property];
+}
 
 // results in:
 {
-  getName: () => string;
-  getAge: () => number;
+  MAX_AGE: 100,
+  MINIMUM_AGE: 0,
+  COUNTRY_OF_RESIDENCE: "AU"
 }
 ```
 
-Note: `Capitalize` is another inbuilt TypeScript utility.
+Note: `Uppercase` is another inbuilt TypeScript utility.
 
 ## Using `infer`
 
-`infer` is used with conditional types in order to extract types in the condition to another generic variable.
-This is not something I particularly understand or can explain well, but I find looking at a couple of examples
-is more helpful in understanding `infer`.
+`infer` is something I confess to not understand very well. However I have found it useful when creating more complex types
+and I find looking at some examples helpful in understanding how to use it.
 
-> Remember, we can only use `infer` in the `extends` clause of a conditional type.
+`infer` is used with conditional types in order to extract types in the condition and assign it to another generic variable.
+The golden rule to remember when using `infer` is:
+
+> `infer` can only be used in the `extends` clause of a _conditional_ type.
 
 Here's an example where I convert a string from `kebab-case` to `snake_case`:
 
@@ -139,8 +140,8 @@ type KebabToSnakeCase<S extends string> = S extends `${infer Char}${infer Rest}`
   : S;
 
 type Result = KebabToSnakeCase<"convert-this-kebab-case-to-snake-case">;
-// Gives: "convert_this_kebab_case_to_snake_case";
 
+// Gives: "convert_this_kebab_case_to_snake_case"
 ```
 
 What the following line:
@@ -209,57 +210,32 @@ type FieldName = typeof fieldNames[number];
 // results in: FieldName = "name" | "age"
 ```
 
-Below is an example of a situation where I used this approach. My memory of it is rather hazy, but from what I recall,
-I needed to make a GET request
-to a REST API, and I could specify what fields in the data I want returned in the response. I simply
-had to pass the field names as query parameters in the URL (in a comma separated format).
-
-Rather than putting the field names as query parameters in a hard to read URL, I decided to put the fields I want
-in an array, then convert the array to the appropriate query parameters. This was quite useful, because I discovered in production
-that there were multiple other field names with the data I needed, and I could easily add them to the array over time.
-
-However, TypeScript types become an issue - how does it know what the response object type is
-given my JavaScript array?
-
-This is how I did it:
+A very simplified example of how this can be useful, is when you want to specify in _JavaScript_ what fields a REST API endpoint
+should return.
 
 ```jsx
-const pickFields = ["age", "isMember"] as const;
+const fieldsToFetch = ["first_name", "last_name", "dob", "country"] as const;
 
-interface ApiResponse {
-  age: number;
-  name: {
-    firstName: string;
-    lastName: string;
-  };
-  height: string;
-  isMember: boolean;
-}
-// Note that I'm not specifying pickFields
-// is of type "Array<keyof ApiResponse>"!
-
-/**
- * I'm constraining it to only the fields I'm interested in
- */
-async function getPersonDetails<
-  RequestedFields extends ReadonlyArray<typeof pickFields[number]>
->(
-  ...fieldNames: RequestedFields
-): Promise<{
-  [Field in RequestedFields extends ReadonlyArray<infer FieldNameValue>
-    ? FieldNameValue
-    : never]: ApiResponse[Field];
-}> {
-  return callRestApi("/v1/person", fieldNames) as any;
+async function someRestAPICall<Fields extends typeof fieldsToFetch>(
+    fields: Fields
+): Promise<{ [Property in Fields[number]]: string }> {
+  // call endpoint and return JSON data
 }
 
-// Will give you { age: number; isMember: boolean; }
-const response = await getPersonDetails(...pickFields)
+const response = await someRestAPICall(fieldsToFetch);
+
+// The type of response would be:
+{
+  first_name: string;
+  last_name: string;
+  dob: string;
+  country: string;
+}
 ```
 
-This is the really cool part of making `pickFields` a `const` - TypeScript
-can figure out that the values in `pickFields` **are a member of** `ApiResponse`!
+So if you want to change which fields to request from the REST API, you just update `fieldsToFetch`, and the
+response would `automatically` update to the correct type.
 
-If we put the string "woof" into `pickFields`, `getPersonDetails` will fail compilation with an error, because "woof" is not a field in `ApiResponse`!
+For example, if you removed `"last_name"`, and somewhere in the application you referred to `response.last_name`, Typescript will fail to compile with an error!
 
-Likewise, putting it into the arguments of `getPersonDetails`, will also fail compilation for the same reason.
+> Update: As of Typescript 4.9, you can use the `satisfies` operator to enforce additional type safety when defining `as const` objects. Read this article for more info on `satisfies`: https://www.totaltypescript.com/clarifying-the-satisfies-operator

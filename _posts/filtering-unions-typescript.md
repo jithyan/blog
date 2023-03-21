@@ -17,13 +17,13 @@ type Cake =
     | { name: "Rainbow cake"; sugarLevel: "high" };
 ```
 
-What if I want a new type, `Breakfast`, which is a union of all the names of cakes with a `sugarLevel` of `"high"`?
+What if I want a new type, `Breakfast`, which is a union of all the names of cakes with a `sugarLevel` of `"high"`, but without manually having to type it out like below?
 
 ```typescript
 type Breakfast = "Strawberry shortcake" | "Rainbow cake";
 ```
 
-Without having to manually type out all the names which fit the criteria, we can achieve this by extracting the values from the `Cake` type:
+We can filter the objects in the `Cake` type to those that match our criteria, and extract the names like this:
 
 ```typescript
 type Breakfast = {
@@ -152,7 +152,7 @@ type Breakfast = CakeObject[Cake["name"]];
 
 As the keys of `CakeObject` are all the `name` values of `Cake`.
 
-Knowing this, we can achieve extract the new type in one step as:
+Knowing this, we can extract the new type in one step as:
 
 ```typescript
 type Breakfast = {
